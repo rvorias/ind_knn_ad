@@ -18,6 +18,7 @@ class KNNExtractor(torch.nn.Module):
 		pool : bool = False,
 	):
 		super().__init__()
+
 		self.feature_extractor = timm.create_model(
 			backbone,
 			out_indices=out_indices,
@@ -27,6 +28,7 @@ class KNNExtractor(torch.nn.Module):
 		for param in self.feature_extractor.parameters():
 			param.requires_grad = False
 		self.feature_extractor.eval()
+		
 		self.pool = torch.nn.AdaptiveAvgPool2d(1) if pool else None
 		self.backbone = backbone # for results metadata
 

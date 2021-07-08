@@ -13,8 +13,9 @@ $ pipenv install -r requirements.txt
 ```
 
 ## Usage
+
 ```
-$ python indad/run.py METHOD [spade, padim, patchcore] --dataset DATASET
+$ python indad/run.py METHOD [--dataset DATASET]
 ```
 Results can be found under `./results/`.
 
@@ -97,6 +98,8 @@ patchcore:
 ## Design considerations
 
 - Data is processed in single images to avoid batch statistics interference.
+- I decided to implement greedy kcenter from scratch, it's pretty slow.
+- `torch.nn.AdaptiveAvgPool2d` for feature map resizing, `torch.nn.functional.interpolate` for score map resizing. (Kind of arbitrary.)
 
 ## Acknowledgements
 
