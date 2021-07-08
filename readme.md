@@ -11,6 +11,7 @@ This repo aims to reproduce the results of the following KNN-based anomaly detec
 ```bash
 $ pipenv install -r requirements.txt
 ```
+Note: I used torch cu11 wheels.
 
 ## Usage
 
