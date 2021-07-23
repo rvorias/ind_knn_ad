@@ -9,19 +9,48 @@ This repo aims to reproduce the results of the following KNN-based anomaly detec
 3. PatchCore (Roth et al. 2021) - knn distance to avgpooled feature maps
    ![patchcore schematic](docs/schematic_patchcore.png)
 
+---
+
 ## Install
 
-```bash
+```shell
 $ pipenv install -r requirements.txt
 ```
 Note: I used torch cu11 wheels.
 
 ## Usage
 
-```
+```shell
 $ python indad/run.py METHOD [--dataset DATASET]
 ```
 Results can be found under `./results/`.
+
+### Custom datasets
+<details>
+  <summary> 👁️ </summary>
+
+Check out one of the downloaded MVTec datasets.
+Naming of images should correspond among folders.
+
+```
+📂datasets
+ ┗ 📂your_custom_dataset
+  ┣ 📂 ground_truth/defective
+  ┃ ┣ 📂 defect_type_1
+  ┃ ┗ 📂 defect_type_2
+  ┣ 📂 test
+  ┃ ┣ 📂 defect_type_1
+  ┃ ┣ 📂 defect_type_2
+  ┃ ┗ 📂 good
+  ┗ 📂 train/good
+```
+
+```shell
+$ python indad/run.py METHOD --dataset your_custom_dataset
+```
+</details>
+
+---
 
 ## Results
 
@@ -88,6 +117,8 @@ patchcore:
   n_reweight: 3
 ```
 
+---
+
 ## Progress
 
 - [x] Datasets
@@ -105,8 +136,10 @@ patchcore:
 ## Design considerations
 
 - Data is processed in single images to avoid batch statistics interference.
-- I decided to implement greedy kcenter from scratch, it's pretty slow.
-- `torch.nn.AdaptiveAvgPool2d` for feature map resizing, `torch.nn.functional.interpolate` for score map resizing. (Kind of arbitrary.)
+- I decided to implement greedy kcenter from scratch and there is room for improvement.
+- `torch.nn.AdaptiveAvgPool2d` for feature map resizing, `torch.nn.functional.interpolate` for score map resizing.
+
+---
 
 ## Acknowledgements
 
