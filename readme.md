@@ -1,5 +1,7 @@
 # Industrial KNN-based Anomaly Detection
 
+![examples](docs/example_anomaly_maps.png | width=500))
+
 This repo aims to reproduce the results of the following KNN-based anomaly detection methods:
 
 1. SPADE (Cohen et al. 2021) - knn in z-space and distance to feature maps
