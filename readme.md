@@ -1,6 +1,6 @@
 # Industrial KNN-based Anomaly Detection
 
-![examples](docs/example_anomaly_maps.png | width=500))
+<img src="docs/example_anomaly_maps.png" width="500"/>
 
 This repo aims to reproduce the results of the following KNN-based anomaly detection methods:
 
