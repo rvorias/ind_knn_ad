@@ -94,6 +94,9 @@ patchcore:
 - [x] SPADE
 - [x] PADIM
 - [x] PatchCore
+- [ ] Add custom dataset option
+- [ ] Add dataset progress bar
+- [ ] Add schematics
 
 ## Design considerations
 
