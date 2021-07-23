@@ -11,6 +11,7 @@ This repo aims to reproduce the results of the following KNN-based anomaly detec
 ```bash
 $ pipenv install -r requirements.txt
 ```
+Note: I used torch cu11 wheels.
 
 ## Usage
 
@@ -65,7 +66,7 @@ Results can be found under `./results/`.
 | zipper     | 96.5     | 98.0     | 95.9     | 96.4    | **99.4**     | 96.0         | 
 | averages   | 96.0     | 96.6     | 92.1     | 95.0    | **99.1**     | 94.7         | 
 
-### Hyperparam:
+### Hyperparams
 
 The following parameters were used to calculate the results. 
 They more or less correspond to the parameters used in the papers.
