@@ -7,6 +7,8 @@ from PIL import Image
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
 
+from os.path import isdir
+
 DATASETS_PATH = Path("./datasets")
 
 def mvtec_classes():
@@ -37,13 +39,13 @@ class MVTecDataset:
         self.val_ds = MVTecTestDataset(cls, size)
 
     def _download(self):
-        url = f"ftp://guest:GU.205dldo@ftp.softronics.ch/mvtec_anomaly_detection/{self.cls}.tar.xz"
-        try:
+        if not isdir(DATASETS_PATH / self.cls):
+            print("Downloading dataset ... ", end="")
+            url = f"ftp://guest:GU.205dldo@ftp.softronics.ch/mvtec_anomaly_detection/{self.cls}.tar.xz"
             ftpstream = urllib.request.urlopen(url)
             file = tarfile.open(fileobj=ftpstream, mode="r|xz")
             file.extractall(path=DATASETS_PATH)
-        except PermissionError:
-            print(f"Dataset {self.cls} probably already exists.")
+            print("DONE")
 
     def load(self):
         return self.train_ds, self.val_ds
