@@ -3,8 +3,11 @@
 This repo aims to reproduce the results of the following KNN-based anomaly detection methods:
 
 1. SPADE (Cohen et al. 2021) - knn in z-space and distance to feature maps
+   ![spade schematic](docs/schematic_spade.png)
 2. PADIM (Defard et al. 2020) - distance to multivariate Gaussian of feature maps
+   ![padim schematic](docs/schematic_padim.png)
 3. PatchCore (Roth et al. 2021) - knn distance to avgpooled feature maps
+   ![patchcore schematic](docs/schematic_patchcore.png)
 
 ## Install
 
