@@ -250,11 +250,12 @@ class PatchCore(KNNExtractor):
 
 		self.patch_lib = torch.cat(self.patch_lib, 0)
 
-		self.coreset_idx = get_coreset_idx_randomp(
-			self.patch_lib,
-			n=int(self.f_coreset * self.patch_lib.shape[0]),
-		)
-		self.patch_lib = self.patch_lib[self.coreset_idx]
+		if self.f_coreset < 1:
+			self.coreset_idx = get_coreset_idx_randomp(
+				self.patch_lib,
+				n=int(self.f_coreset * self.patch_lib.shape[0]),
+			)
+			self.patch_lib = self.patch_lib[self.coreset_idx]
 
 	def predict(self, sample):		
 		feature_maps = self(sample)
