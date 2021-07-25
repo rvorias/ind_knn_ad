@@ -1,10 +1,16 @@
 import click
-import torch
-from typing import List
 
 from data import MVTecDataset, mvtec_classes
 from model import SPADE, PaDiM, PatchCore
-from utils import serialize_results, write_results
+from utils import write_results
+
+# seeds
+import torch
+import random
+import numpy as np
+torch.manual_seed(0)
+random.seed(0)
+np.random.seed(0)
 
 import warnings # for some torch warnings regarding depreciation
 warnings.filterwarnings("ignore")
@@ -12,7 +18,8 @@ warnings.filterwarnings("ignore")
 ALL_CLASSES = mvtec_classes()
 ALLOWED_METHODS = ["spade", "padim", "patchcore"]
 
-def run_model(classes, method):
+
+def run_model(method, classes):
     results = {}
     for cls  in classes:
         if method == "spade":
@@ -27,16 +34,18 @@ def run_model(classes, method):
             )
         elif method == "patchcore":
             model = PatchCore(
-                f_coreset=.01, 
+                f_coreset=1., 
                 backbone="wide_resnet101_2",
             )
-        print(f"Running tests for {cls}.")
+        print(f"Running {method} on {cls} dataset.")
         train_ds, test_ds = MVTecDataset(cls).load()
 
+        print("Training ...")
         model.fit(train_ds)
+        print("Testing ...")
         image_rocauc, pixel_rocauc = model.evaluate(test_ds)
         
-        print(f"Test results {cls} - image_rocauc: {image_rocauc}, pixel_rocauc: {pixel_rocauc}")
+        print(f"Test results {cls} - image_rocauc: {image_rocauc:.2f}, pixel_rocauc: {pixel_rocauc:.2f}")
         results[cls] = [float(image_rocauc), float(pixel_rocauc)]
 
     image_results = [v[0] for _, v in results.items()]
@@ -65,7 +74,7 @@ def cli_interface(method, dataset):
     method = method.lower()
     assert method in ALLOWED_METHODS, f"Select from {ALLOWED_METHODS}."
 
-    total_results = run_model(dataset, method)
+    total_results = run_model(method, dataset)
 
     write_results(total_results, method)
     
