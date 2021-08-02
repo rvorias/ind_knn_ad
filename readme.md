@@ -6,10 +6,12 @@ This repo aims to reproduce the results of the following KNN-based anomaly detec
 
 1. SPADE (Cohen et al. 2021) - knn in z-space and distance to feature maps
    ![spade schematic](docs/schematic_spade.png)
-2. PADIM (Defard et al. 2020) - distance to multivariate Gaussian of feature maps
+2. PaDiM* (Defard et al. 2020) - distance to multivariate Gaussian of feature maps
    ![padim schematic](docs/schematic_padim.png)
 3. PatchCore (Roth et al. 2021) - knn distance to avgpooled feature maps
    ![patchcore schematic](docs/schematic_patchcore.png)
+
+* actually does not have any knn mechanism, but shares many things implementation-wise.
 
 ---
 
@@ -33,6 +35,7 @@ Results can be found under `./results/`.
 
 Check out one of the downloaded MVTec datasets.
 Naming of images should correspond among folders.
+Right now there is no support for no ground truth pixel masks.
 
 ```
 📂datasets
@@ -107,15 +110,15 @@ They more or less correspond to the parameters used in the papers.
 
 ```yaml
 spade:
-  backbone: wide_resnet101_2
+  backbone: wide_resnet50_2
   k: 50
 padim:
-  backbone: wide_resnet101_2
+  backbone: wide_resnet50_2
   d_reduced: 250
   epsilon: 0.04
 patchcore:
-  backbone: wide_resnet101_2
-  f_coreset: 0.01
+  backbone: wide_resnet50_2
+  f_coreset: 0.25
   n_reweight: 3
 ```
 
@@ -131,15 +134,16 @@ patchcore:
 - [x] SPADE
 - [x] PADIM
 - [x] PatchCore
-- [ ] Add custom dataset option
-- [ ] Add dataset progress bar
-- [ ] Add schematics
+- [x] Add custom dataset option
+- [x] Add dataset progress bar
+- [x] Add schematics
 
 ## Design considerations
 
 - Data is processed in single images to avoid batch statistics interference.
 - I decided to implement greedy kcenter from scratch and there is room for improvement.
 - `torch.nn.AdaptiveAvgPool2d` for feature map resizing, `torch.nn.functional.interpolate` for score map resizing.
+- GPU is used for backbones and coreset selection (20x speedup).
 
 ---
 
