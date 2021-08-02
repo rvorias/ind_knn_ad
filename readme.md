@@ -139,6 +139,7 @@ patchcore:
 - [x] Add custom dataset option
 - [x] Add dataset progress bar
 - [x] Add schematics
+- [ ] Unit tests
 
 ## Design considerations
 
