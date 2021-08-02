@@ -11,7 +11,7 @@ This repo aims to reproduce the results of the following KNN-based anomaly detec
 3. PatchCore (Roth et al. 2021) - knn distance to avgpooled feature maps
    ![patchcore schematic](docs/schematic_patchcore.png)
 
-* actually does not have any knn mechanism, but shares many things implementation-wise.
+\* actually does not have any knn mechanism, but shares many things implementation-wise.
 
 ---
 
@@ -24,10 +24,24 @@ Note: I used torch cu11 wheels.
 
 ## Usage
 
+CLI:
 ```shell
 $ python indad/run.py METHOD [--dataset DATASET]
 ```
 Results can be found under `./results/`.
+
+Code example:
+```python
+from indad.model import SPADE
+
+model = SPADE(k=42, backbone="hypernet")
+
+# feed healthy dataset
+model.fit(...)
+
+# get predictions
+img_lvl_anom_score, pxl_lvl_anom_score = model.predict(...)
+```
 
 ### Custom datasets
 <details>
