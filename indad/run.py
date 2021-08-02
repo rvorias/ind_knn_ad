@@ -21,22 +21,24 @@ ALLOWED_METHODS = ["spade", "padim", "patchcore"]
 
 def run_model(method, classes):
     results = {}
+
     for cls  in classes:
         if method == "spade":
             model = SPADE(
                 k=50,
-                backbone="wide_resnet101_2",
+                backbone="wide_resnet50_2",
             )
         elif method == "padim":
             model = PaDiM(
                 d_reduced=250,
-                backbone="wide_resnet101_2",
+                backbone="wide_resnet50_2",
             )
         elif method == "patchcore":
             model = PatchCore(
-                f_coreset=1., 
-                backbone="wide_resnet101_2",
+                f_coreset=.25, 
+                backbone="wide_resnet50_2",
             )
+
         print(f"Running {method} on {cls} dataset.")
         train_ds, test_ds = MVTecDataset(cls).load()
 
