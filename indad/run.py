@@ -4,6 +4,8 @@ from data import MVTecDataset, mvtec_classes
 from model import SPADE, PaDiM, PatchCore
 from utils import write_results
 
+from typing import List
+
 # seeds
 import torch
 import random
@@ -19,10 +21,10 @@ ALL_CLASSES = mvtec_classes()
 ALLOWED_METHODS = ["spade", "padim", "patchcore"]
 
 
-def run_model(method, classes):
+def run_model(method: str, classes: List):
     results = {}
 
-    for cls  in classes:
+    for cls in classes:
         if method == "spade":
             model = SPADE(
                 k=50,
@@ -66,11 +68,10 @@ def run_model(method, classes):
 @click.command()
 @click.argument("method")
 @click.option("--dataset", default="all", help="Dataset, defaults to all datasets.")
-def cli_interface(method, dataset): 
+def cli_interface(method: str, dataset: str): 
     if dataset == "all":
         dataset = ALL_CLASSES
     else:
-        assert dataset in ALL_CLASSES, "Dataset does not exist."
         dataset = [dataset]
 
     method = method.lower()
