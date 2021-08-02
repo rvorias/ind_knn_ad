@@ -3,6 +3,7 @@ from tqdm import tqdm
 from datetime import datetime
 
 import torch
+from torch import Tensor
 from torchvision import transforms
 
 import numpy as np
@@ -25,36 +26,49 @@ class GaussianBlur:
         return final_map
 
 
-def get_coreset_idx_randomp(z_lib, n : int = 3, eps : float = .95):
+def get_coreset_idx_randomp(z_lib, n : int = 1000, eps : float = .95) -> Tensor:
     """Returns n coreset idx for given z_lib.
     
-    Might take quite some time when z_lib is large and n is high.
+    Performance on AMD3700, 32GB RAM, RTX3080 (10GB):
+    CPU: 40-60 it/s, GPU: 1120 it/s
+
+    Args:
+        z_lib:  (n, d) tensor of patches.
+        n:      Number of patches to select.
+        eps:    Agression of the sparse random projection.
+
+    Returns:
+        coreset indices
     """
 
-    print("Fitting random projections ... ", end="")
+    print(f"Fitting random projections. Start dim = {z_lib.shape}.")
     transformer = random_projection.SparseRandomProjection(eps=eps)
     z_lib = torch.tensor(transformer.fit_transform(z_lib))
-    print("DONE")
+    print(f"DONE.                 Transformed dim = {z_lib.shape}.")
 
     select_idx = 0
     last_item = z_lib[select_idx:select_idx+1]
     coreset_idx = [torch.tensor(select_idx)]
     min_distances = torch.linalg.norm(z_lib-last_item, dim=1, keepdims=True)
+    # The line below is not faster than linalg.norm, although i'm keeping it in for
+    # future reference.
+    # min_distances = torch.sum(torch.pow(z_lib-last_item, 2), dim=1, keepdims=True)
 
     if torch.cuda.is_available():
-        last_item.to("cuda")
-        z_lib.to("cuda")
-        min_distances.to("cuda")
+        last_item = last_item.to("cuda")
+        z_lib = z_lib.to("cuda")
+        min_distances = min_distances.to("cuda")
 
     for _ in tqdm(range(n-1)):
         distances = torch.linalg.norm(z_lib-last_item, dim=1, keepdims=True) # broadcasting step
+        # distances = torch.sum(torch.pow(z_lib-last_item, 2), dim=1, keepdims=True) # broadcasting step
         min_distances = torch.minimum(distances, min_distances) # iterative step
         select_idx = torch.argmax(min_distances) # selection step
 
         # bookkeeping
         last_item = z_lib[select_idx:select_idx+1]
         min_distances[select_idx] = 0
-        coreset_idx.append(select_idx)
+        coreset_idx.append(select_idx.to("cpu"))
 
     return torch.stack(coreset_idx)
 
