@@ -1,16 +1,17 @@
+import os
+from os.path import isdir
 import tarfile
 import wget
 from pathlib import Path
-import numpy as np
 from PIL import Image
 
+from torch import tensor
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
 
-import os
-from os.path import isdir
-
 DATASETS_PATH = Path("./datasets")
+IMAGENET_MEAN = tensor([.485, .456, .406])
+IMAGENET_STD = tensor([.229, .224, .225])
 
 def mvtec_classes():
     return [
@@ -58,9 +59,10 @@ class MVTecTrainDataset(ImageFolder):
         super().__init__(
             root=DATASETS_PATH / cls / "train",
             transform=transforms.Compose([
-                transforms.Resize(256),
+                transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
+                transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
             ])
         )
         self.cls = cls
@@ -71,14 +73,13 @@ class MVTecTestDataset(ImageFolder):
         super().__init__(
             root=DATASETS_PATH / cls / "test",
             transform=transforms.Compose([
-                transforms.Resize(256),
+                transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
+                transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
             ]),
             target_transform=transforms.Compose([
-                transforms.Resize(
-                    256,
-                    interpolation=transforms.InterpolationMode.NEAREST
+                transforms.Resize(256, interpolation=transforms.InterpolationMode.NEAREST
                 ),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
