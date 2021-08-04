@@ -13,14 +13,14 @@ from utils import GaussianBlur, get_coreset_idx_randomp
 class KNNExtractor(torch.nn.Module):
 	def __init__(
 		self,
-		backbone : str = "resnet50",
+		backbone_name : str = "resnet50",
 		out_indices : Tuple = None,
 		pool : bool = False,
 	):
 		super().__init__()
 
 		self.feature_extractor = timm.create_model(
-			backbone,
+			backbone_name,
 			out_indices=out_indices,
 			features_only=True,
 			pretrained=True,
@@ -30,7 +30,8 @@ class KNNExtractor(torch.nn.Module):
 		self.feature_extractor.eval()
 		
 		self.pool = torch.nn.AdaptiveAvgPool2d(1) if pool else None
-		self.backbone = backbone # for results metadata
+		self.backbone_name = backbone_name # for results metadata
+		self.out_indices = out_indices
 
 		self.device = "cuda" if torch.cuda.is_available() else "cpu"
 		self.feature_extractor.to(self.device)
@@ -44,7 +45,7 @@ class KNNExtractor(torch.nn.Module):
 		else:
 			return feature_maps
 
-	def fit(self, train_ds):
+	def fit(self, _):
 		raise NotImplementedError
 
 	def evaluate(self, test_ds):
@@ -71,7 +72,10 @@ class KNNExtractor(torch.nn.Module):
 		return image_rocauc, pixel_rocauc
 
 	def get_parameters(self):
-		raise NotImplementedError
+		return {
+			"backbone_name": self.backbone_name,
+			"out_indices": self.out_indices
+		}
 
 class SPADE(KNNExtractor):
 	def __init__(
@@ -137,10 +141,9 @@ class SPADE(KNNExtractor):
 		return z_score, scaled_s_map
 
 	def get_parameters(self):
-		return {
-			"backbone": self.backbone,
+		return super().get_parameters().update({
 			"k": self.k,
-		}
+		})
 
 
 class PaDiM(KNNExtractor):
@@ -205,11 +208,10 @@ class PaDiM(KNNExtractor):
 		return torch.max(s_map), scaled_s_map
 
 	def get_parameters(self):
-		return {
-			"backbone": self.backbone,
+		return super().get_parameters().update({
 			"d_reduced": self.d_reduced,
 			"epsilon": self.epsilon,
-		}	
+		})
 
 
 class PatchCore(KNNExtractor):
@@ -288,8 +290,7 @@ class PatchCore(KNNExtractor):
 		return s, s_map
 
 	def get_parameters(self):
-		return {
-			"backbone": self.backbone,
+		return super().get_parameters().update({
 			"f_coreset": self.f_coreset,
 			"n_reweight": self.n_reweight,
-		}
+		})
