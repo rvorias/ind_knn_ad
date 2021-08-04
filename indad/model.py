@@ -2,6 +2,8 @@ from typing import Tuple
 from tqdm import tqdm
 
 import torch
+from torch import tensor
+from torchvision.datasets import VisionDataset
 import timm
 
 import numpy as np
@@ -36,8 +38,9 @@ class KNNExtractor(torch.nn.Module):
 		self.device = "cuda" if torch.cuda.is_available() else "cpu"
 		self.feature_extractor.to(self.device)
 			
-	def __call__(self, x):
-		feature_maps = self.feature_extractor(x.to(self.device))
+	def __call__(self, x: tensor):
+		with torch.no_grad():
+			feature_maps = self.feature_extractor(x.to(self.device))
 		feature_maps = [fmap.to("cpu") for fmap in feature_maps]
 		if self.pool:
 			z = self.pool(feature_maps[-1])
@@ -45,10 +48,13 @@ class KNNExtractor(torch.nn.Module):
 		else:
 			return feature_maps
 
-	def fit(self, _):
+	def fit(self, _: VisionDataset):
 		raise NotImplementedError
 
-	def evaluate(self, test_ds):
+	def predict(self, _: tensor):
+		raise NotImplementedError
+
+	def evaluate(self, test_ds: VisionDataset) -> Tuple[float, float]:
 		"""Calls predict step for each test sample."""
 		image_preds = []
 		image_labels = []
@@ -71,7 +77,7 @@ class KNNExtractor(torch.nn.Module):
 
 		return image_rocauc, pixel_rocauc
 
-	def get_parameters(self):
+	def get_parameters(self) -> dict:
 		return {
 			"backbone_name": self.backbone_name,
 			"out_indices": self.out_indices
@@ -80,11 +86,11 @@ class KNNExtractor(torch.nn.Module):
 class SPADE(KNNExtractor):
 	def __init__(
 		self,
-		k: int,
-		backbone : str = "resnet50",
+		k: int = 5,
+		backbone_name: str = "resnet50",
 	):
 		super().__init__(
-			backbone=backbone,
+			backbone_name=backbone_name,
 			out_indices=(1,2,3),
 			pool=True,
 		)
@@ -149,11 +155,11 @@ class SPADE(KNNExtractor):
 class PaDiM(KNNExtractor):
 	def __init__(
 		self,
-		d_reduced : int = 100,
-		backbone : str = "resnet50",
+		d_reduced: int = 100,
+		backbone_name: str = "resnet50",
 	):
 		super().__init__(
-			backbone=backbone,
+			backbone_name=backbone_name,
 			out_indices=(1,2,3),
 			pool=False,
 		)
@@ -218,10 +224,10 @@ class PatchCore(KNNExtractor):
 	def __init__(
 		self,
 		f_coreset: float = 0.01,
-		backbone : str = "wide_resnet50_2",
+		backbone_name : str = "resnet50",
 	):
 		super().__init__(
-			backbone=backbone,
+			backbone_name=backbone_name,
 			out_indices=(2,3),
 			pool=False,
 		)
@@ -277,7 +283,11 @@ class PatchCore(KNNExtractor):
 		_, nn_idx = torch.topk(w_dist, k=self.n_reweight, largest=False) # pt.2
 		# equation 7 from the paper
 		m_star_knn = torch.linalg.norm(m_test-self.patch_lib[nn_idx[0,1:]], dim=1)
-		w = 1-(torch.exp(s_star)/torch.sum(torch.exp(m_star_knn)))
+		# Softmax normalization trick as in transformers.
+		# As the patch vectors grow larger, their norm might differ a lot.
+		# exp(norm) can give infinities.
+		D = torch.sqrt(torch.tensor(patch.shape[1]))
+		w = 1-(torch.exp(s_star/D)/(torch.sum(torch.exp(m_star_knn/D))))
 		s = w*s_star
 
 		# segmentation map
