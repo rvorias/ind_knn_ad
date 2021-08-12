@@ -1,5 +1,6 @@
 from typing import Tuple
 from tqdm import tqdm
+import sys
 
 import torch
 from torch import tensor
@@ -10,6 +11,12 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 
 from utils import GaussianBlur, get_coreset_idx_randomp
+
+
+TQDM_PARAMS = {
+	"file" : sys.stdout,
+	"bar_format" : "{l_bar}{bar:10}{r_bar}{bar:-10b}",
+}
 
 
 class KNNExtractor(torch.nn.Module):
@@ -61,7 +68,7 @@ class KNNExtractor(torch.nn.Module):
 		pixel_preds = []
 		pixel_labels = []
 
-		for sample, mask, label in tqdm(test_ds):
+		for sample, mask, label in tqdm(test_ds, **TQDM_PARAMS):
 			z_score, fmap = self.predict(sample.unsqueeze(0))
 			
 			image_preds.append(z_score.numpy())
@@ -103,7 +110,7 @@ class SPADE(KNNExtractor):
 		self.blur = GaussianBlur(4)
 
 	def fit(self, train_ds):
-		for sample, _ in tqdm(train_ds):
+		for sample, _ in tqdm(train_ds, **TQDM_PARAMS):
 			feature_maps, z = self(sample.unsqueeze(0))
 
 			# z vector
@@ -170,7 +177,7 @@ class PaDiM(KNNExtractor):
 		self.resize = None
 
 	def fit(self, train_ds):
-		for sample, _ in tqdm(train_ds):
+		for sample, _ in tqdm(train_ds, **TQDM_PARAMS):
 			feature_maps = self(sample.unsqueeze(0))
 			if self.resize is None:
 				largest_fmap_size = feature_maps[0].shape[-2:]
@@ -211,7 +218,7 @@ class PaDiM(KNNExtractor):
 			s_map.unsqueeze(0), size=(self.image_size,self.image_size), mode='bilinear'
 		)
 
-		return torch.max(s_map), scaled_s_map
+		return torch.max(s_map), scaled_s_map[0, ...]
 
 	def get_parameters(self):
 		return super().get_parameters().update({
@@ -244,7 +251,7 @@ class PatchCore(KNNExtractor):
 		self.feature_extractor.to(self.device)
 
 	def fit(self, train_ds):
-		for sample, _ in tqdm(train_ds):
+		for sample, _ in tqdm(train_ds, **TQDM_PARAMS):
 			feature_maps = self(sample.unsqueeze(0))
 
 			if self.resize is None:
