@@ -1,6 +1,6 @@
 # Industrial KNN-based Anomaly Detection
 
-⭐Now has streamlit support!⭐ Run `$ streamlit run app.py`
+⭐Now has streamlit support!⭐ Run `$ streamlit run streamlit_app.py`
 
 <img src="docs/example_anomaly_maps.png" width="500"/>
 

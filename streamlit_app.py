@@ -13,7 +13,7 @@ import torch
 import matplotlib.pyplot as plt
 
 sys.path.append('./indad')
-from indad.data import MVTecDataset, mvtec_classes, StreamingDataset
+from indad.data import MVTecDataset, StreamingDataset
 from indad.model import SPADE, PaDiM, PatchCore
 from indad.data import IMAGENET_MEAN, IMAGENET_STD
 
@@ -21,6 +21,9 @@ N_IMAGE_GALLERY = 4
 N_PREDICTIONS = 2
 METHODS = ["SPADE", "PaDiM", "PatchCore"]
 BACKBONES = ["resnet18", "efficientnet_b0"]
+
+# keep the two smallest datasets
+mvtec_classes = ["hazelnut_reduced", "transistor_reduced"]
 
 def tensor_to_img(x, normalize=False):
     if normalize:
@@ -89,8 +92,7 @@ def main():
         # null other elements
         app_mvtec_dataset = None
     else:
-        app_mvtec_dataset = st.sidebar.selectbox("Choose an MVTec dataset",
-            mvtec_classes())
+        app_mvtec_dataset = st.sidebar.selectbox("Choose an MVTec dataset", mvtec_classes)
         # null other elements
         app_custom_train_images = []
         app_custom_test_images = None
@@ -150,7 +152,7 @@ def main():
             train_dataset = st.session_state.train_dataset
             test_dataset = st.session_state.test_dataset
 
-        st.header("Random training samples")
+        st.header("Random (healthy) training samples")
         cols = st.columns(N_IMAGE_GALLERY)
         if not st.session_state.reached_test_phase:
             col_imgs = get_sample_images(train_dataset, N_IMAGE_GALLERY)
@@ -179,7 +181,7 @@ def main():
                     f_coreset=.01, 
                     backbone_name=app_backbone,
                 )
-            st.success(f"{app_method} model loaded.")
+            st.success(f"{app_method} model loaded. Training ...")
         else:
             model = st.session_state.model
         
@@ -215,7 +217,7 @@ def main():
 def st_redirect(src, dst, msg):
     """https://discuss.streamlit.io/t/cannot-print-the-terminal-output-in-streamlit/6602"""
     placeholder = st.info(msg)
-    sleep(1)
+    sleep(3)
     output_func = getattr(placeholder, dst)
 
     with StringIO() as buffer:
