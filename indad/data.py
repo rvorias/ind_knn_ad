@@ -50,6 +50,8 @@ class MVTecDataset:
                 tar.extractall(DATASETS_PATH)
             os.remove(f"{self.cls}.tar.xz")
             print("") # force newline
+        else:
+            print(f"Found '{self.cls}' in '{DATASETS_PATH}/'")
 
     def load(self):
         return self.train_ds, self.val_ds
@@ -107,3 +109,26 @@ class MVTecTestDataset(ImageFolder):
             target = self.target_transform(target)
 
         return sample, target[:1], sample_class
+
+class StreamingDataset:
+    """This dataset is made specifically for the streamlit app."""
+    def __init__(self, size: int = 224):
+        self.size = size
+        self.transform=transforms.Compose([
+                transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
+                transforms.CenterCrop(size),
+                transforms.ToTensor(),
+                transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+            ])
+        self.samples = []
+    
+    def add_pil_image(self, image : Image):
+        image = image.convert('RGB')
+        self.samples.append(image)
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, index):
+        sample = self.samples[index]
+        return (self.transform(sample), None)
