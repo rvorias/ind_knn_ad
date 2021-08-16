@@ -1,3 +1,4 @@
+from torch._C import Value
 import yaml
 from tqdm import tqdm
 from datetime import datetime
@@ -50,9 +51,12 @@ def get_coreset_idx_randomp(
     """
 
     print(f"Fitting random projections. Start dim = {z_lib.shape}.")
-    transformer = random_projection.SparseRandomProjection(eps=eps)
-    z_lib = torch.tensor(transformer.fit_transform(z_lib))
-    print(f"DONE.                 Transformed dim = {z_lib.shape}.")
+    try:
+        transformer = random_projection.SparseRandomProjection(eps=eps)
+        z_lib = torch.tensor(transformer.fit_transform(z_lib))
+        print(f"DONE.                 Transformed dim = {z_lib.shape}.")
+    except ValueError:
+        print("Error: could not project vectors. Please increase `eps`.")
 
     select_idx = 0
     last_item = z_lib[select_idx:select_idx+1]
