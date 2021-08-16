@@ -29,7 +29,7 @@ class GaussianBlur:
 def get_coreset_idx_randomp(
     z_lib : tensor, 
     n : int = 1000,
-    eps : float = .9,
+    eps : float = 0.90,
     float16 : bool = True,
     force_cpu : bool = False,
 ) -> tensor:

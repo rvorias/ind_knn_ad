@@ -230,8 +230,9 @@ class PaDiM(KNNExtractor):
 class PatchCore(KNNExtractor):
 	def __init__(
 		self,
-		f_coreset: float = 0.01,
+		f_coreset: float = 0.01, # fraction the number of training samples
 		backbone_name : str = "resnet50",
+		coreset_eps: float = 0.90, # sparse projection parameter
 	):
 		super().__init__(
 			backbone_name=backbone_name,
@@ -239,6 +240,7 @@ class PatchCore(KNNExtractor):
 			pool=False,
 		)
 		self.f_coreset = f_coreset
+		self.coreset_eps = coreset_eps
 		self.image_size = 224
 		self.average = torch.nn.AvgPool2d(3, stride=1)
 		self.blur = GaussianBlur(4)
@@ -269,6 +271,7 @@ class PatchCore(KNNExtractor):
 			self.coreset_idx = get_coreset_idx_randomp(
 				self.patch_lib,
 				n=int(self.f_coreset * self.patch_lib.shape[0]),
+				eps=self.coreset_eps,
 			)
 			self.patch_lib = self.patch_lib[self.coreset_idx]
 
