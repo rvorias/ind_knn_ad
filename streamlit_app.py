@@ -20,7 +20,7 @@ from indad.data import IMAGENET_MEAN, IMAGENET_STD
 N_IMAGE_GALLERY = 4
 N_PREDICTIONS = 2
 METHODS = ["SPADE", "PaDiM", "PatchCore"]
-BACKBONES = ["resnet18", "efficientnet_b0"]
+BACKBONES = ["efficientnet_b0", "tf_mobilenetv3_small_100"]
 
 # keep the two smallest datasets
 mvtec_classes = ["hazelnut_reduced", "transistor_reduced"]
@@ -180,6 +180,7 @@ def main():
                 model = PatchCore(
                     f_coreset=.01, 
                     backbone_name=app_backbone,
+                    coreset_eps=.95,
                 )
             st.success(f"{app_method} model loaded. Training ...")
         else:
