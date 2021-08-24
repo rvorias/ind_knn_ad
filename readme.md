@@ -36,7 +36,7 @@ Code example:
 ```python
 from indad.model import SPADE
 
-model = SPADE(k=42, backbone_name="hypernet")
+model = SPADE(k=5, backbone_name="resnet18")
 
 # feed healthy dataset
 model.fit(...)
