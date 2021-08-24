@@ -173,7 +173,7 @@ def main():
                 )
             elif app_method == "PaDiM":
                 model = PaDiM(
-                    d_reduced=150,
+                    d_reduced=75,
                     backbone_name=app_backbone,
                 )
             elif app_method == "PatchCore":
