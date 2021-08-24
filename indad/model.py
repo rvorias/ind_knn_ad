@@ -187,8 +187,13 @@ class PaDiM(KNNExtractor):
 		self.patch_lib = torch.cat(self.patch_lib, 0)
 
 		# random projection
-		self.r_indices = torch.randperm(self.patch_lib.shape[1])[:self.d_reduced]
-		self.patch_lib_reduced = self.patch_lib[:,self.r_indices,...]
+		if self.patch_lib.shape[1] > self.d_reduced:
+			print(f"PaDiM: reducing {self.patch_lib.shape[1]} dimensions to {self.d_reduced}.")
+			self.r_indices = torch.randperm(self.patch_lib.shape[1])[:self.d_reduced]
+			self.patch_lib_reduced = self.patch_lib[:,self.r_indices,...]
+		else:
+			print("PaDiM: d_reduced is higher than the actual number of dimensions, copying self.patch_lib ...")
+			self.patch_lib_reduced = self.patch_lib
 
 		# calcs
 		self.means = torch.mean(self.patch_lib, dim=0, keepdim=True)
