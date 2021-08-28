@@ -28,7 +28,7 @@ def run_model(method: str, classes: List):
         if method == "spade":
             model = SPADE(
                 k=50,
-                backbone_name="wide_resnet50_2",
+                backbone_name="resnet50",
             )
         elif method == "padim":
             model = PaDiM(
@@ -37,8 +37,8 @@ def run_model(method: str, classes: List):
             )
         elif method == "patchcore":
             model = PatchCore(
-                f_coreset=.10, 
-                backbone_name="wide_resnet50_2",
+                f_coreset=.01, 
+                backbone_name="RN50",
             )
 
         print(f"Running {method} on {cls} dataset.")

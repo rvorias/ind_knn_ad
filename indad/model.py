@@ -10,7 +10,11 @@ import timm
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
-from utils import GaussianBlur, get_coreset_idx_randomp
+from utils import GaussianBlur, get_coreset_idx_randomp, FeatureExtractor
+
+import sys
+
+import clip
 
 
 TQDM_PARAMS = {
@@ -18,8 +22,37 @@ TQDM_PARAMS = {
 	"bar_format" : "{l_bar}{bar:10}{r_bar}{bar:-10b}",
 }
 
+def get_backbone(backbone_name, out_indices):
+	if backbone_name in clip.available_models():
+		model, _ = clip.load(backbone_name, device="cpu")
+		layer_mapping = {
+			0: "relu",
+			1: "layer1", 
+			2: "layer2",
+			3: "layer3",
+			4: "layer4",
+			-1: "attnpool",
+		}
+		selected_layers = [layer_mapping[idx] for idx in out_indices]
+		feature_extractor = FeatureExtractor(
+			model.visual,
+			selected_layers,
+			out_indices,
+		)
+	else:
+		feature_extractor = timm.create_model(
+			backbone_name,
+			features_only=True,
+			pretrained=True,
+		)
 
-class KNNExtractor(torch.nn.Module):
+	for param in feature_extractor.parameters():
+		param.requires_grad = False
+	feature_extractor.eval()
+
+	return feature_extractor
+
+class BaseModel(torch.nn.Module):
 	def __init__(
 		self,
 		backbone_name : str = "resnet50",
@@ -28,19 +61,19 @@ class KNNExtractor(torch.nn.Module):
 	):
 		super().__init__()
 
-		self.feature_extractor = timm.create_model(
-			backbone_name,
-			out_indices=out_indices,
-			features_only=True,
-			pretrained=True,
-		)
-		for param in self.feature_extractor.parameters():
-			param.requires_grad = False
-		self.feature_extractor.eval()
-		
-		self.pool = torch.nn.AdaptiveAvgPool2d(1) if pool else None
-		self.backbone_name = backbone_name # for results metadata
 		self.out_indices = out_indices
+		self.feature_extractor = get_backbone(
+			backbone_name, out_indices)
+		
+		if pool:
+			if backbone_name in clip.available_models():
+				self.pool = torch.nn.Identity()
+			else:
+				self.pool = torch.nn.AdaptiveAvgPool2d(1)
+		else:
+			self.pool = None
+
+		self.backbone_name = backbone_name # for results metadata
 
 		self.device = "cuda" if torch.cuda.is_available() else "cpu"
 		self.feature_extractor.to(self.device)
@@ -48,10 +81,10 @@ class KNNExtractor(torch.nn.Module):
 	def __call__(self, x: tensor):
 		with torch.no_grad():
 			feature_maps = self.feature_extractor(x.to(self.device))
-		feature_maps = [fmap.to("cpu") for fmap in feature_maps]
+		feature_maps = [feature_maps[idx].to("cpu") for idx in self.out_indices]
 		if self.pool:
 			z = self.pool(feature_maps[-1])
-			return feature_maps, z
+			return feature_maps[:-1], z
 		else:
 			return feature_maps
 
@@ -90,7 +123,7 @@ class KNNExtractor(torch.nn.Module):
 			"out_indices": self.out_indices
 		}
 
-class SPADE(KNNExtractor):
+class SPADE(BaseModel):
 	def __init__(
 		self,
 		k: int = 5,
@@ -98,7 +131,7 @@ class SPADE(KNNExtractor):
 	):
 		super().__init__(
 			backbone_name=backbone_name,
-			out_indices=(1,2,3),
+			out_indices=(1,2,-1),
 			pool=True,
 		)
 		self.k = k
@@ -159,7 +192,7 @@ class SPADE(KNNExtractor):
 		})
 
 
-class PaDiM(KNNExtractor):
+class PaDiM(BaseModel):
 	def __init__(
 		self,
 		d_reduced: int = 100,
@@ -232,7 +265,7 @@ class PaDiM(KNNExtractor):
 		})
 
 
-class PatchCore(KNNExtractor):
+class PatchCore(BaseModel):
 	def __init__(
 		self,
 		f_coreset: float = 0.01, # fraction the number of training samples

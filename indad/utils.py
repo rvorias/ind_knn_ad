@@ -4,12 +4,14 @@ from tqdm import tqdm
 from datetime import datetime
 
 import torch
-from torch import tensor
+from torch import nn, Tensor, tensor
 from torchvision import transforms
 
 import numpy as np
 from PIL import ImageFilter
 from sklearn import random_projection
+
+from typing import Dict, Iterable, Callable
 
 
 class GaussianBlur:
@@ -107,3 +109,31 @@ def serialize_results(results : dict) -> str:
         s = s + f"| {v[0]*100:.1f}  | {v[1]*100:.1f}  |"
         ans.append(s)
     return "\n".join(ans)
+
+
+class FeatureExtractor(nn.Module):
+    """From https://medium.com/the-dl/how-to-use-pytorch-hooks-5041d777f904"""
+    def __init__(
+        self, model: nn.Module,
+        layer_names: Iterable[str],
+        layer_idx_refs: Iterable[int],
+    ):
+        super().__init__()
+        self.model = model
+        self.layer_names = layer_names
+        self._features = {layer: torch.empty(0) for layer in layer_idx_refs}
+
+        for i in range(len(layer_names)):
+            layer = dict([*self.model.named_modules()])[layer_names[i]]
+            layer.register_forward_hook(
+                self.save_outputs_hook(layer_idx_refs[i])
+            )
+
+    def save_outputs_hook(self, layer_id: str) -> Callable:
+        def fn(_, __, output):
+            self._features[layer_id] = output
+        return fn
+
+    def forward(self, x: Tensor) -> Dict[str, Tensor]:
+        _ = self.model(x)
+        return self._features
