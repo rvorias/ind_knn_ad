@@ -8,6 +8,7 @@ from PIL import Image
 from torch import tensor
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
+from torch.utils.data import DataLoader
 
 DATASETS_PATH = Path("./datasets")
 IMAGENET_MEAN = tensor([.485, .456, .406])
@@ -39,11 +40,11 @@ class MVTecDataset:
         if cls in mvtec_classes():
             self._download()
         self.train_ds = MVTecTrainDataset(cls, size)
-        self.val_ds = MVTecTestDataset(cls, size)
+        self.test_ds = MVTecTestDataset(cls, size)
 
     def _download(self):
         if not isdir(DATASETS_PATH / self.cls):
-            print(f"Could not find '{self.cls}' in '{DATASETS_PATH}/'. Downloading ... ")
+            print(f"   Could not find '{self.cls}' in '{DATASETS_PATH}/'. Downloading ... ")
             url = f"ftp://guest:GU.205dldo@ftp.softronics.ch/mvtec_anomaly_detection/{self.cls}.tar.xz"
             wget.download(url)
             with tarfile.open(f"{self.cls}.tar.xz") as tar:
@@ -51,10 +52,13 @@ class MVTecDataset:
             os.remove(f"{self.cls}.tar.xz")
             print("") # force newline
         else:
-            print(f"Found '{self.cls}' in '{DATASETS_PATH}/'")
+            print(f"   Found '{self.cls}' in '{DATASETS_PATH}/'\n")
 
-    def load(self):
-        return self.train_ds, self.val_ds
+    def get_datasets(self):
+        return self.train_ds, self.test_ds
+
+    def get_dataloaders(self):
+        return DataLoader(self.train_ds), DataLoader(self.test_ds)
 
 class MVTecTrainDataset(ImageFolder):
     def __init__(self, cls : str, size : int):
@@ -131,4 +135,4 @@ class StreamingDataset:
 
     def __getitem__(self, index):
         sample = self.samples[index]
-        return (self.transform(sample), None)
+        return (self.transform(sample), tensor(0.))

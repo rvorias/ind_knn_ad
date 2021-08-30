@@ -1,22 +1,15 @@
 from typing import Tuple
 from tqdm import tqdm
-import sys
 
 import torch
 from torch import tensor
-from torchvision.datasets import VisionDataset
+from torch.utils.data import DataLoader
 import timm
 
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
-from utils import GaussianBlur, get_coreset_idx_randomp
-
-
-TQDM_PARAMS = {
-	"file" : sys.stdout,
-	"bar_format" : "{l_bar}{bar:10}{r_bar}{bar:-10b}",
-}
+from utils import GaussianBlur, get_coreset_idx_randomp, get_tqdm_params
 
 
 class KNNExtractor(torch.nn.Module):
@@ -24,7 +17,7 @@ class KNNExtractor(torch.nn.Module):
 		self,
 		backbone_name : str = "resnet50",
 		out_indices : Tuple = None,
-		pool : bool = False,
+		pool_last : bool = False,
 	):
 		super().__init__()
 
@@ -38,38 +31,38 @@ class KNNExtractor(torch.nn.Module):
 			param.requires_grad = False
 		self.feature_extractor.eval()
 		
-		self.pool = torch.nn.AdaptiveAvgPool2d(1) if pool else None
+		self.pool = torch.nn.AdaptiveAvgPool2d(1) if pool_last else None
 		self.backbone_name = backbone_name # for results metadata
 		self.out_indices = out_indices
 
 		self.device = "cuda" if torch.cuda.is_available() else "cpu"
-		self.feature_extractor.to(self.device)
+		self.feature_extractor = self.feature_extractor.to(self.device)
 			
 	def __call__(self, x: tensor):
 		with torch.no_grad():
 			feature_maps = self.feature_extractor(x.to(self.device))
 		feature_maps = [fmap.to("cpu") for fmap in feature_maps]
 		if self.pool:
-			z = self.pool(feature_maps[-1])
-			return feature_maps, z
+			# spit into fmaps and z
+			return feature_maps[:-1], self.pool(feature_maps[-1])
 		else:
 			return feature_maps
 
-	def fit(self, _: VisionDataset):
+	def fit(self, _: DataLoader):
 		raise NotImplementedError
 
 	def predict(self, _: tensor):
 		raise NotImplementedError
 
-	def evaluate(self, test_ds: VisionDataset) -> Tuple[float, float]:
+	def evaluate(self, test_dl: DataLoader) -> Tuple[float, float]:
 		"""Calls predict step for each test sample."""
 		image_preds = []
 		image_labels = []
 		pixel_preds = []
 		pixel_labels = []
 
-		for sample, mask, label in tqdm(test_ds, **TQDM_PARAMS):
-			z_score, fmap = self.predict(sample.unsqueeze(0))
+		for sample, mask, label in tqdm(test_dl, **get_tqdm_params()):
+			z_score, fmap = self.predict(sample)
 			
 			image_preds.append(z_score.numpy())
 			image_labels.append(label)
@@ -84,22 +77,23 @@ class KNNExtractor(torch.nn.Module):
 
 		return image_rocauc, pixel_rocauc
 
-	def get_parameters(self) -> dict:
+	def get_parameters(self, extra_params : dict = None) -> dict:
 		return {
 			"backbone_name": self.backbone_name,
-			"out_indices": self.out_indices
+			"out_indices": self.out_indices,
+			**extra_params,
 		}
 
 class SPADE(KNNExtractor):
 	def __init__(
 		self,
 		k: int = 5,
-		backbone_name: str = "resnet50",
+		backbone_name: str = "resnet18",
 	):
 		super().__init__(
 			backbone_name=backbone_name,
-			out_indices=(1,2,3),
-			pool=True,
+			out_indices=(1,2,3,-1),
+			pool_last=True,
 		)
 		self.k = k
 		self.image_size = 224
@@ -109,9 +103,9 @@ class SPADE(KNNExtractor):
 		self.threshold_fmaps = None
 		self.blur = GaussianBlur(4)
 
-	def fit(self, train_ds):
-		for sample, _ in tqdm(train_ds, **TQDM_PARAMS):
-			feature_maps, z = self(sample.unsqueeze(0))
+	def fit(self, train_dl):
+		for sample, _ in tqdm(train_dl, **get_tqdm_params()):
+			feature_maps, z = self(sample)
 
 			# z vector
 			self.z_lib.append(z)
@@ -154,21 +148,19 @@ class SPADE(KNNExtractor):
 		return z_score, scaled_s_map
 
 	def get_parameters(self):
-		return super().get_parameters().update({
+		return super().get_parameters({
 			"k": self.k,
 		})
-
 
 class PaDiM(KNNExtractor):
 	def __init__(
 		self,
 		d_reduced: int = 100,
-		backbone_name: str = "resnet50",
+		backbone_name: str = "resnet18",
 	):
 		super().__init__(
 			backbone_name=backbone_name,
 			out_indices=(1,2,3),
-			pool=False,
 		)
 		self.image_size = 224
 		self.d_reduced = d_reduced # your RAM will thank you
@@ -176,9 +168,9 @@ class PaDiM(KNNExtractor):
 		self.patch_lib = []
 		self.resize = None
 
-	def fit(self, train_ds):
-		for sample, _ in tqdm(train_ds, **TQDM_PARAMS):
-			feature_maps = self(sample.unsqueeze(0))
+	def fit(self, train_dl):
+		for sample, _ in tqdm(train_dl, **get_tqdm_params()):
+			feature_maps = self(sample)
 			if self.resize is None:
 				largest_fmap_size = feature_maps[0].shape[-2:]
 				self.resize = torch.nn.AdaptiveAvgPool2d(largest_fmap_size)
@@ -188,11 +180,11 @@ class PaDiM(KNNExtractor):
 
 		# random projection
 		if self.patch_lib.shape[1] > self.d_reduced:
-			print(f"PaDiM: reducing {self.patch_lib.shape[1]} dimensions to {self.d_reduced}.")
+			print(f"   PaDiM: (randomly) reducing {self.patch_lib.shape[1]} dimensions to {self.d_reduced}.")
 			self.r_indices = torch.randperm(self.patch_lib.shape[1])[:self.d_reduced]
 			self.patch_lib_reduced = self.patch_lib[:,self.r_indices,...]
 		else:
-			print("PaDiM: d_reduced is higher than the actual number of dimensions, copying self.patch_lib ...")
+			print("   PaDiM: d_reduced is higher than the actual number of dimensions, copying self.patch_lib ...")
 			self.patch_lib_reduced = self.patch_lib
 
 		# calcs
@@ -226,7 +218,7 @@ class PaDiM(KNNExtractor):
 		return torch.max(s_map), scaled_s_map[0, ...]
 
 	def get_parameters(self):
-		return super().get_parameters().update({
+		return super().get_parameters({
 			"d_reduced": self.d_reduced,
 			"epsilon": self.epsilon,
 		})
@@ -236,13 +228,12 @@ class PatchCore(KNNExtractor):
 	def __init__(
 		self,
 		f_coreset: float = 0.01, # fraction the number of training samples
-		backbone_name : str = "resnet50",
+		backbone_name : str = "resnet18",
 		coreset_eps: float = 0.90, # sparse projection parameter
 	):
 		super().__init__(
 			backbone_name=backbone_name,
 			out_indices=(2,3),
-			pool=False,
 		)
 		self.f_coreset = f_coreset
 		self.coreset_eps = coreset_eps
@@ -254,12 +245,9 @@ class PatchCore(KNNExtractor):
 		self.patch_lib = []
 		self.resize = None
 
-		self.device = "cuda" if torch.cuda.is_available() else "cpu"
-		self.feature_extractor.to(self.device)
-
-	def fit(self, train_ds):
-		for sample, _ in tqdm(train_ds, **TQDM_PARAMS):
-			feature_maps = self(sample.unsqueeze(0))
+	def fit(self, train_dl):
+		for sample, _ in tqdm(train_dl, **get_tqdm_params()):
+			feature_maps = self(sample)
 
 			if self.resize is None:
 				largest_fmap_size = feature_maps[0].shape[-2:]
@@ -314,8 +302,9 @@ class PatchCore(KNNExtractor):
 
 		return s, s_map
 
+
 	def get_parameters(self):
-		return super().get_parameters().update({
+		return super().get_parameters({
 			"f_coreset": self.f_coreset,
 			"n_reweight": self.n_reweight,
 		})

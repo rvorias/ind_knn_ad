@@ -1,8 +1,8 @@
 import click
 
 from data import MVTecDataset, mvtec_classes
-from model import SPADE, PaDiM, PatchCore
-from utils import write_results
+from models import SPADE, PaDiM, PatchCore
+from utils import print_and_export_results
 
 from typing import List
 
@@ -41,15 +41,18 @@ def run_model(method: str, classes: List):
                 backbone_name="wide_resnet50_2",
             )
 
-        print(f"Running {method} on {cls} dataset.")
-        train_ds, test_ds = MVTecDataset(cls).load()
+        print(f"\n█│ Running {method} on {cls} dataset.")
+        print(  f" ╰{'─'*(len(method)+len(cls)+23)}\n")
+        train_ds, test_ds = MVTecDataset(cls).get_dataloaders()
 
-        print("Training ...")
+        print("   Training ...")
         model.fit(train_ds)
-        print("Testing ...")
+        print("   Testing ...")
         image_rocauc, pixel_rocauc = model.evaluate(test_ds)
         
-        print(f"Test results {cls} - image_rocauc: {image_rocauc:.2f}, pixel_rocauc: {pixel_rocauc:.2f}")
+        print(f"\n   ╭{'─'*(len(cls)+15)}┬{'─'*20}┬{'─'*20}╮")
+        print(  f"   │ Test results {cls} │ image_rocauc: {image_rocauc:.2f} │ pixel_rocauc: {pixel_rocauc:.2f} │")
+        print(  f"   ╰{'─'*(len(cls)+15)}┴{'─'*20}┴{'─'*20}╯")
         results[cls] = [float(image_rocauc), float(pixel_rocauc)]
         
     image_results = [v[0] for _, v in results.items()]
@@ -79,7 +82,7 @@ def cli_interface(method: str, dataset: str):
 
     total_results = run_model(method, dataset)
 
-    write_results(total_results, method)
+    print_and_export_results(total_results, method)
     
 if __name__ == "__main__":
     cli_interface()

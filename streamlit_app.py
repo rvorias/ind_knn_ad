@@ -9,12 +9,12 @@ from time import sleep
 from PIL import Image
 import io
 import numpy as np
-import torch
+from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
 sys.path.append('./indad')
 from indad.data import MVTecDataset, StreamingDataset
-from indad.model import SPADE, PaDiM, PatchCore
+from indad.models import SPADE, PaDiM, PatchCore
 from indad.data import IMAGENET_MEAN, IMAGENET_STD
 
 N_IMAGE_GALLERY = 4
@@ -70,14 +70,14 @@ def get_sample_images(dataset, n):
     for index in indexes:
         sample, _ = dataset[index]
         ans.append(tensor_to_img(sample, normalize=True))
-    return ans
+    return ans  
 
 def main():
     with open("./docs/streamlit_instructions.md","r") as file:
         md_file = file.read()
-    streamlit_instructions = st.markdown(md_file)
+    st.markdown(md_file)
 
-    app_config = st.sidebar.title("Config")
+    st.sidebar.title("Config")
 
     app_custom_dataset = st.sidebar.checkbox("Custom dataset", False)
     if app_custom_dataset:
@@ -112,7 +112,7 @@ def main():
         st.session_state.model = None
         st.session_state.reached_test_phase = False
         st.session_state.test_idx = 0
-        test_cols = None
+        # test_cols = None
 
     if app_start or st.session_state.reached_test_phase:
         # LOAD DATA
@@ -142,8 +142,8 @@ def main():
                     st.error("Please upload 3 or more training images and 1 test image.")
             else:
                 with st_stdout("info", "Checking or downloading dataset ..."):
-                    train_dataset, test_dataset = MVTecDataset(app_mvtec_dataset).load()
-                    st.success(f"Succesfully loaded '{app_mvtec_dataset}' dataset.")
+                    train_dataset, test_dataset = MVTecDataset(app_mvtec_dataset).get_datasets()
+                    st.success(f"Loaded '{app_mvtec_dataset}' dataset.")
                     flag_data_ok = True
             
             if not flag_data_ok:
@@ -182,7 +182,7 @@ def main():
                     backbone_name=app_backbone,
                     coreset_eps=.95,
                 )
-            st.success(f"{app_method} model loaded. Training ...")
+            st.success(f"Loaded {app_method} model.")
         else:
             model = st.session_state.model
         
@@ -190,8 +190,8 @@ def main():
         # --------
 
         if not st.session_state.reached_test_phase:
-            with st_stdout("info", "Setting up training ..."):
-                model.fit(train_dataset)
+            with st_stdout("info", "Setting up training ..."):            
+                model.fit(DataLoader(train_dataset))
 
         # TESTING
         # -------
