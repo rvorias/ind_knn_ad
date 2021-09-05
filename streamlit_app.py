@@ -32,15 +32,16 @@ def tensor_to_img(x, normalize=False):
     x =  x.clip(0.,1.).permute(1,2,0).detach().numpy()
     return x
 
-def pred_to_img(x):
-    x -= x.min()
-    if x.max() > 0:
-        x /= x.max()
+def pred_to_img(x, range):
+    range_min, range_max = range
+    x -= range_min
+    if (range_max - range_min) > 0:
+        x /= (range_max - range_min)
     return tensor_to_img(x)
 
-def show_pred(sample, score, fmap):
+def show_pred(sample, score, fmap, range):
     sample_img = tensor_to_img(sample, normalize=True)
-    fmap_img = pred_to_img(fmap)
+    fmap_img = pred_to_img(fmap, range)
 
     # overlay
     plt.imshow(sample_img)
@@ -102,6 +103,13 @@ def main():
 
     app_backbone = st.sidebar.selectbox("Choose a backbone",
         BACKBONES)
+
+    manualRange = st.sidebar.checkbox('Manually set color range', value=False) 
+    
+    if manualRange:
+        app_color_min = st.sidebar.number_input("set color min ",-1000,1000, 0)
+        app_color_max = st.sidebar.number_input("set color max ",-1000,1000, 200)   
+        color_range = app_color_min, app_color_max
 
     app_start = st.sidebar.button("Start")
 
@@ -211,8 +219,12 @@ def main():
         
         sample, *_ = test_dataset[st.session_state.test_idx]
         img_lvl_anom_score, pxl_lvl_anom_score = model.predict(sample.unsqueeze(0))
-        show_pred(sample, img_lvl_anom_score, pxl_lvl_anom_score)
-
+        score_range = pxl_lvl_anom_score.min(), pxl_lvl_anom_score.max()
+        if not manualRange:
+            color_range = score_range
+        show_pred(sample, img_lvl_anom_score, pxl_lvl_anom_score, color_range)
+        st.write("pixcel score min:{:.0f}".format(score_range[0]))
+        st.write("pixcel score max:{:.0f}".format(score_range[1]))
 
 @contextmanager
 def st_redirect(src, dst, msg):
