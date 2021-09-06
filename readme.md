@@ -169,7 +169,8 @@ patchcore:
 
 ## Acknowledgements
 
--  [hcw-00](https://github.com/hcw-00) for tipping `sklearn.random_projection.SparseRandomProjection`
+-  [hcw-00](https://github.com/hcw-00) for tipping `sklearn.random_projection.SparseRandomProjection`.
+-  [h1day](https://github.com/h1day) for adding a custom range to the streamlit app.
 
 ## References
 
