@@ -223,8 +223,8 @@ def main():
         if not manualRange:
             color_range = score_range
         show_pred(sample, img_lvl_anom_score, pxl_lvl_anom_score, color_range)
-        st.write("pixcel score min:{:.0f}".format(score_range[0]))
-        st.write("pixcel score max:{:.0f}".format(score_range[1]))
+        st.write("pixel score min:{:.0f}".format(score_range[0]))
+        st.write("pixel score max:{:.0f}".format(score_range[1]))
 
 @contextmanager
 def st_redirect(src, dst, msg):
