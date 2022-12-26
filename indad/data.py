@@ -45,7 +45,7 @@ class MVTecDataset:
     def _download(self):
         if not isdir(DATASETS_PATH / self.cls):
             print(f"   Could not find '{self.cls}' in '{DATASETS_PATH}/'. Downloading ... ")
-            url = f"ftp://guest:GU.205dldo@ftp.softronics.ch/mvtec_anomaly_detection/{self.cls}.tar.xz"
+            url = f"https://www.mydrive.ch/shares/38536/3830184030e49fe74747669442f0f282/download/420938134-1629953256/{self.cls}.tar.xz"
             wget.download(url)
             with tarfile.open(f"{self.cls}.tar.xz") as tar:
                 tar.extractall(DATASETS_PATH)
