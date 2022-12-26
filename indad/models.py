@@ -70,6 +70,7 @@ class KNNExtractor(torch.nn.Module):
 			pixel_preds.extend(fmap.flatten().numpy())
 			pixel_labels.extend(mask.flatten().numpy())
 			
+		image_labels = np.stack(image_labels)
 		image_preds = np.stack(image_preds)
 
 		image_rocauc = roc_auc_score(image_labels, image_preds)
