@@ -21,24 +21,24 @@ ALL_CLASSES = mvtec_classes()
 ALLOWED_METHODS = ["spade", "padim", "patchcore"]
 
 
-def run_model(method: str, classes: List):
+def run_model(method: str, classes: List[str], backbone: str):
     results = {}
 
     for cls in classes:
         if method == "spade":
             model = SPADE(
                 k=50,
-                backbone_name="wide_resnet50_2",
+                backbone_name=backbone,
             )
         elif method == "padim":
             model = PaDiM(
                 d_reduced=350,
-                backbone_name="wide_resnet50_2",
+                backbone_name=backbone,
             )
         elif method == "patchcore":
             model = PatchCore(
                 f_coreset=.10, 
-                backbone_name="wide_resnet50_2",
+                backbone_name=backbone,
             )
 
         print(f"\n█│ Running {method} on {cls} dataset.")
@@ -70,8 +70,9 @@ def run_model(method: str, classes: List):
 
 @click.command()
 @click.argument("method")
-@click.option("--dataset", default="all", help="Dataset, defaults to all datasets.")
-def cli_interface(method: str, dataset: str): 
+@click.option("--dataset", default="all", help="Dataset name, defaults to all datasets.")
+@click.option("--backbone", default="wide_resnet50_2", help="The TIMM compatible backbone.")
+def cli_interface(method: str, dataset: str, backbone: str): 
     if dataset == "all":
         dataset = ALL_CLASSES
     else:
@@ -80,7 +81,7 @@ def cli_interface(method: str, dataset: str):
     method = method.lower()
     assert method in ALLOWED_METHODS, f"Select from {ALLOWED_METHODS}."
 
-    total_results = run_model(method, dataset)
+    total_results = run_model(method, dataset, backbone)
 
     print_and_export_results(total_results, method)
     
