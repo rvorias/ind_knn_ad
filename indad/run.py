@@ -1,6 +1,6 @@
 import click
 
-from data import MVTecDataset, mvtec_classes
+from data import MVTecDataset, MVTEC_CLASSES
 from models import SPADE, PaDiM, PatchCore
 from utils import print_and_export_results
 
@@ -17,14 +17,14 @@ np.random.seed(0)
 import warnings # for some torch warnings regarding depreciation
 warnings.filterwarnings("ignore")
 
-ALL_CLASSES = mvtec_classes()
+ALL_CLASSES = MVTEC_CLASSES.keys()
 ALLOWED_METHODS = ["spade", "padim", "patchcore"]
 
 
 def run_model(method: str, classes: List[str], backbone: str):
     results = {}
 
-    for cls in classes:
+    for class_name in classes:
         if method == "spade":
             model = SPADE(
                 k=50,
@@ -41,19 +41,19 @@ def run_model(method: str, classes: List[str], backbone: str):
                 backbone_name=backbone,
             )
 
-        print(f"\n█│ Running {method} on {cls} dataset.")
-        print(  f" ╰{'─'*(len(method)+len(cls)+23)}\n")
-        train_ds, test_ds = MVTecDataset(cls).get_dataloaders()
+        print(f"\n█│ Running {method} on {class_name} dataset.")
+        print(  f" ╰{'─'*(len(method)+len(class_name)+23)}\n")
+        train_ds, test_ds = MVTecDataset(class_name).get_dataloaders()
 
         print("   Training ...")
         model.fit(train_ds)
         print("   Testing ...")
         image_rocauc, pixel_rocauc = model.evaluate(test_ds)
         
-        print(f"\n   ╭{'─'*(len(cls)+15)}┬{'─'*20}┬{'─'*20}╮")
-        print(  f"   │ Test results {cls} │ image_rocauc: {image_rocauc:.2f} │ pixel_rocauc: {pixel_rocauc:.2f} │")
-        print(  f"   ╰{'─'*(len(cls)+15)}┴{'─'*20}┴{'─'*20}╯")
-        results[cls] = [float(image_rocauc), float(pixel_rocauc)]
+        print(f"\n   ╭{'─'*(len(class_name)+15)}┬{'─'*20}┬{'─'*20}╮")
+        print(  f"   │ Test results {class_name} │ image_rocauc: {image_rocauc:.2f} │ pixel_rocauc: {pixel_rocauc:.2f} │")
+        print(  f"   ╰{'─'*(len(class_name)+15)}┴{'─'*20}┴{'─'*20}╯")
+        results[class_name] = [float(image_rocauc), float(pixel_rocauc)]
         
     image_results = [v[0] for _, v in results.items()]
     average_image_roc_auc = sum(image_results)/len(image_results)
