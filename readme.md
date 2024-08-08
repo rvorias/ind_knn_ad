@@ -1,6 +1,5 @@
 # Industrial KNN-based Anomaly Detection
 
-⭐Now has streamlit support!⭐ Run `$ streamlit run streamlit_app.py`
 
 <img src="docs/example_anomaly_maps.png" width="500"/>
 
@@ -169,10 +168,17 @@ patchcore:
 
 ---
 
+## Streamlit demo
+
+Run `$ streamlit run streamlit_app.py`
+
+---
+
 ## Acknowledgements
 
 -  [hcw-00](https://github.com/hcw-00) for tipping `sklearn.random_projection.SparseRandomProjection`.
 -  [h1day](https://github.com/h1day) for adding a custom range to the streamlit app.
+- MVTec dataset from https://www.mvtec.com/company/research/datasets/mvtec-ad, please note that this data is CC BY-NC-SA 4.0.
 
 ## References
 
@@ -209,5 +215,30 @@ PatchCore:
       eprint={2106.08265},
       archivePrefix={arXiv},
       primaryClass={cs.CV}
+}
+```
+
+MVTec dataset:
+```bibtex
+@article{Bergmann2021,
+ author = {Paul Bergmann and Kilian Batzner and Michael Fauser and David Sattlegger and Carsten Steger},
+ title = {The MVTec Anomaly Detection Dataset: A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection},
+ journal = {International Journal of Computer Vision},
+ year = {2021},
+ volume = {129},
+ number = {4},
+ pages = {1038-1059},
+ doi = {10.1007/s11263-020-01400-4}
+}
+```
+
+```bibtex
+@inproceedings{Bergmann2019,
+ author = {Paul Bergmann and Michael Fauser and David Sattlegger and Carsten Steger},
+ title = {MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection},
+ booktitle = {IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+ year = {2019},
+ pages = {9584-9592},
+ doi = {10.1109/CVPR.2019.00982}
 }
 ```
