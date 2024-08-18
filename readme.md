@@ -36,11 +36,15 @@ from indad.model import SPADE
 
 model = SPADE(k=5, backbone_name="resnet18")
 
-# feed healthy dataset
-model.fit(...)
+# get some training data
+class_name = "bottle"
+train_ds, test_ds = MVTecDataset(class_name).get_dataloaders()
 
-# get predictions
-img_lvl_anom_score, pxl_lvl_anom_score = model.predict(...)
+model.fit(train_ds)
+
+# evaluate
+image_rocauc, pixel_rocauc = model.evaluate(test_ds)
+print(image_rocauc, pixel_rocauc)
 ```
 
 ### Custom datasets
