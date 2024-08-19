@@ -1,2 +1,6 @@
 notebooks/
 *.pyc
+*.sarif
+*.pt
+*.onnx
+.vscode/
