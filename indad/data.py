@@ -1,18 +1,18 @@
 import os
-from os.path import isdir
 import tarfile
-import wget
+from os.path import isdir
 from pathlib import Path
-from PIL import Image
 
+import wget
+from PIL import Image
 from torch import tensor
-from torchvision.datasets import ImageFolder
-from torchvision import transforms
 from torch.utils.data import DataLoader
+from torchvision import transforms
+from torchvision.datasets import ImageFolder
 
 DATASETS_PATH = Path("./datasets")
-IMAGENET_MEAN = tensor([.485, .456, .406])
-IMAGENET_STD = tensor([.229, .224, .225])
+IMAGENET_MEAN = tensor([0.485, 0.456, 0.406])
+IMAGENET_STD = tensor([0.229, 0.224, 0.225])
 
 MVTEC_CLASSES = {
     "bottle": "https://www.mydrive.ch/shares/38536/3830184030e49fe74747669442f0f282/download/420937370-1629951468/bottle.tar.xz",
@@ -32,8 +32,9 @@ MVTEC_CLASSES = {
     "zipper": "https://www.mydrive.ch/shares/38536/3830184030e49fe74747669442f0f282/download/420938385-1629953449/zipper.tar.xz",
 }
 
+
 class MVTecDataset:
-    def __init__(self, class_name : str, size : int = 224):
+    def __init__(self, class_name: str, size: int = 224):
         self.class_name = class_name
         self.size = size
         if class_name in MVTEC_CLASSES:
@@ -43,12 +44,14 @@ class MVTecDataset:
 
     def _download(self, url: str):
         if not isdir(DATASETS_PATH / self.class_name):
-            print(f"   Could not find '{self.class_name}' in '{DATASETS_PATH}/'. Downloading ... ")
+            print(
+                f"   Could not find '{self.class_name}' in '{DATASETS_PATH}/'. Downloading ... "
+            )
             wget.download(url)
             with tarfile.open(f"{self.class_name}.tar.xz") as tar:
                 tar.extractall(DATASETS_PATH)
             os.remove(f"{self.class_name}.tar.xz")
-            print("") # force newline
+            print("")  # force newline
         else:
             print(f"   Found '{self.class_name}' in '{DATASETS_PATH}/'\n")
 
@@ -58,46 +61,59 @@ class MVTecDataset:
     def get_dataloaders(self):
         return DataLoader(self.train_ds), DataLoader(self.test_ds)
 
+
 class MVTecTrainDataset(ImageFolder):
-    def __init__(self, class_name : str, size : int):
+    def __init__(self, class_name: str, size: int):
         super().__init__(
             root=DATASETS_PATH / class_name / "train",
-            transform=transforms.Compose([
-                transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
-                transforms.CenterCrop(size),
-                transforms.ToTensor(),
-                transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-            ])
+            transform=transforms.Compose(
+                [
+                    transforms.Resize(
+                        256, interpolation=transforms.InterpolationMode.BICUBIC
+                    ),
+                    transforms.CenterCrop(size),
+                    transforms.ToTensor(),
+                    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+                ]
+            ),
         )
         self.class_name = class_name
         self.size = size
 
+
 class MVTecTestDataset(ImageFolder):
-    def __init__(self, class_name : str, size : int):
+    def __init__(self, class_name: str, size: int):
         super().__init__(
             root=DATASETS_PATH / class_name / "test",
-            transform=transforms.Compose([
-                transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
-                transforms.CenterCrop(size),
-                transforms.ToTensor(),
-                transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-            ]),
-            target_transform=transforms.Compose([
-                transforms.Resize(256, interpolation=transforms.InterpolationMode.NEAREST
-                ),
-                transforms.CenterCrop(size),
-                transforms.ToTensor(),
-            ]),
+            transform=transforms.Compose(
+                [
+                    transforms.Resize(
+                        256, interpolation=transforms.InterpolationMode.BICUBIC
+                    ),
+                    transforms.CenterCrop(size),
+                    transforms.ToTensor(),
+                    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
+                ]
+            ),
+            target_transform=transforms.Compose(
+                [
+                    transforms.Resize(
+                        256, interpolation=transforms.InterpolationMode.NEAREST
+                    ),
+                    transforms.CenterCrop(size),
+                    transforms.ToTensor(),
+                ]
+            ),
         )
         self.class_name = class_name
         self.size = size
-            
+
     def __getitem__(self, index):
         path, _ = self.samples[index]
         sample = self.loader(path)
-        
+
         if "good" in path:
-            target = Image.new('L', (self.size, self.size))
+            target = Image.new("L", (self.size, self.size))
             sample_class = 0
         else:
             target_path = path.replace("test", "ground_truth")
@@ -112,20 +128,26 @@ class MVTecTestDataset(ImageFolder):
 
         return sample, target[:1], sample_class
 
+
 class StreamingDataset:
     """This dataset is made specifically for the streamlit app."""
+
     def __init__(self, size: int = 224):
         self.size = size
-        self.transform=transforms.Compose([
-                transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize(
+                    256, interpolation=transforms.InterpolationMode.BICUBIC
+                ),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
                 transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-            ])
+            ]
+        )
         self.samples = []
-    
-    def add_pil_image(self, image : Image):
-        image = image.convert('RGB')
+
+    def add_pil_image(self, image: Image):
+        image = image.convert("RGB")
         self.samples.append(image)
 
     def __len__(self):
@@ -133,4 +155,4 @@ class StreamingDataset:
 
     def __getitem__(self, index):
         sample = self.samples[index]
-        return (self.transform(sample), tensor(0.))
+        return (self.transform(sample), tensor(0.0))
