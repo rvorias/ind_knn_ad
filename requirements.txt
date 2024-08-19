@@ -13,3 +13,7 @@ PyYAML
 scikit_learn
 torch
 torchvision
+onnx
+onnxscript
+onnxruntime
+loguru
