@@ -239,7 +239,7 @@ class PaDiM(KNNExtractor):
             [2, 3, 0, 1]
         )
 
-    def predict(self, sample):
+    def forward(self, sample):
         feature_maps = self.extract(sample)
         resized_maps = [self.resize(fmap) for fmap in feature_maps]
         fmap = torch.cat(resized_maps, 1)

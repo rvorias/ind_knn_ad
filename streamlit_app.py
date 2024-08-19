@@ -17,7 +17,7 @@ from indad.data import IMAGENET_MEAN, IMAGENET_STD, MVTecDataset, StreamingDatas
 from indad.models import SPADE, PaDiM, PatchCore
 
 N_IMAGE_GALLERY = 4
-N_PREDICTIONS = 2
+N_forwardIONS = 2
 METHODS = ["SPADE", "PaDiM", "PatchCore"]
 BACKBONES = ["efficientnet_b0", "tf_mobilenetv3_small_100"]
 
@@ -29,6 +29,8 @@ def tensor_to_img(x, normalize=False):
     if normalize:
         x *= IMAGENET_STD.unsqueeze(-1).unsqueeze(-1)
         x += IMAGENET_MEAN.unsqueeze(-1).unsqueeze(-1)
+    if len(x.shape) == 4:
+        x = x[0]
     x = x.clip(0.0, 1.0).permute(1, 2, 0).detach().numpy()
     return x
 
@@ -218,7 +220,7 @@ def main():
         )
 
         sample, *_ = test_dataset[st.session_state.test_idx]
-        img_lvl_anom_score, pxl_lvl_anom_score = model.predict(sample.unsqueeze(0))
+        img_lvl_anom_score, pxl_lvl_anom_score = model.forward(sample.unsqueeze(0))
         score_range = pxl_lvl_anom_score.min(), pxl_lvl_anom_score.max()
         if not manualRange:
             color_range = score_range

@@ -26,7 +26,7 @@ $ pipenv install -r requirements.txt
 
 CLI:
 ```shell
-$ python indad/run.py METHOD [--dataset DATASET]
+$ python run.py METHOD [--dataset DATASET]
 ```
 Results can be found under `./results/`.
 
@@ -69,7 +69,7 @@ Right now there is no support for no ground truth pixel masks.
 ```
 
 ```shell
-$ python indad/run.py METHOD --dataset your_custom_dataset
+$ python run.py METHOD --dataset your_custom_dataset
 ```
 </details>
 

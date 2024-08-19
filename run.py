@@ -11,11 +11,11 @@ from indad.data import MVTEC_CLASSES, MVTecDataset
 from indad.models import SPADE, PaDiM, PatchCore
 from indad.utils import print_and_export_results
 
+import warnings  # for some torch warnings regarding depreciation
+
 torch.manual_seed(0)
 random.seed(0)
 np.random.seed(0)
-
-import warnings  # for some torch warnings regarding depreciation
 
 warnings.filterwarnings("ignore")
 
