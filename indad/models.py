@@ -191,10 +191,13 @@ class PaDiM(KNNExtractor):
             out_indices=(1, 2, 3),
         )
         self.image_size = 224
-        self.d_reduced = d_reduced  # your RAM will thank you
         self.epsilon = 0.04  # cov regularization
         self.patch_lib = []
         self.resize = None
+
+        # reduction parmas
+        self.d_reduced = d_reduced  # your RAM will thank you
+        self.r_indices = None # this will get set in fit
 
     def fit(self, train_dl):
         for sample, _ in tqdm(train_dl, **get_tqdm_params()):
@@ -203,26 +206,20 @@ class PaDiM(KNNExtractor):
                 largest_fmap_size = feature_maps[0].shape[-2:]
                 self.resize = torch.nn.AdaptiveAvgPool2d(largest_fmap_size)
             resized_maps = [self.resize(fmap) for fmap in feature_maps]
-            self.patch_lib.append(torch.cat(resized_maps, 1))
+            resized_maps = torch.cat(resized_maps, 1)
+
+            if resized_maps.shape[1] > self.d_reduced:
+                if self.r_indices is None:
+                    self.r_indices = torch.randperm(resized_maps.shape[1])[:self.d_reduced]
+                resized_maps = resized_maps[:, self.r_indices, ...]
+
+                print(resized_maps.shape)
+
+            self.patch_lib.append(resized_maps)
         self.patch_lib = torch.cat(self.patch_lib, 0)
-
-        # random projection
-        if self.patch_lib.shape[1] > self.d_reduced:
-            print(
-                f"   PaDiM: (randomly) reducing {self.patch_lib.shape[1]} dimensions to {self.d_reduced}."
-            )
-            self.r_indices = torch.randperm(self.patch_lib.shape[1])[: self.d_reduced]
-            self.patch_lib_reduced = self.patch_lib[:, self.r_indices, ...]
-        else:
-            print(
-                "   PaDiM: d_reduced is higher than the actual number of dimensions, copying self.patch_lib ..."
-            )
-            self.patch_lib_reduced = self.patch_lib
-
         # calcs
         self.means = torch.mean(self.patch_lib, dim=0, keepdim=True)
-        self.means_reduced = self.means[:, self.r_indices, ...]
-        x_ = self.patch_lib_reduced - self.means_reduced
+        x_ = self.patch_lib - self.means
 
         # cov calc
         self.E = (
@@ -245,7 +242,7 @@ class PaDiM(KNNExtractor):
         fmap = torch.cat(resized_maps, 1)
 
         # reduce
-        x_ = fmap[:, self.r_indices, ...] - self.means_reduced
+        x_ = fmap[:, self.r_indices, ...] - self.means
 
         left = torch.einsum("abkl,bckl->ackl", x_, self.E_inv)
         s_map = torch.sqrt(torch.einsum("abkl,abkl->akl", left, x_))
