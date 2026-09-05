@@ -174,7 +174,7 @@ patchcore:
 
 Prioritize dataset creation, review, quality checks and reproducibility for operators
 and agents. Keep SPADE, PaDiM and PatchCore as the core models. The next dataset
-milestones are label correction, capture-group splits, versioned snapshots, and
+milestones are capture-group splits, versioned snapshots, and
 saved inspection runs with threshold review. See the [workflow and roadmap](docs/dataset_workflow.md).
 
 ## Design considerations
@@ -195,7 +195,8 @@ saved inspection runs with threshold review. See the [workflow and roadmap](docs
 
 Install the `web` extra and run `indad-web`. Open `http://127.0.0.1:8000`.
 The responsive browser interface includes dataset creation, imports, a searchable
-sample gallery, mask review, quality findings, and background baseline inspection.
+sample gallery, mask review, label correction, reversible sample exclusion,
+quality findings, and background baseline inspection.
 Use `indad-web --datasets /path/to/datasets --port 8000` to configure local storage.
 
 The console is plain HTML/CSS/JavaScript served by FastAPI, with no frontend build

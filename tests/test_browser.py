@@ -99,6 +99,42 @@ def test_operator_browser_workflow(tmp_path):
                     playwright_api.expect(
                         page.locator(".prediction-images img")
                     ).to_have_count(3, timeout=10000)
+                    page.get_by_role("tab", name="Samples").click()
+                    page.get_by_role(
+                        "button", name="Review test/good/c.png", exact=True
+                    ).click()
+                    page.get_by_role(
+                        "button", name="Correct label or collection"
+                    ).click()
+                    page.locator("#edit-purpose").select_option("test-defect")
+                    page.locator("#edit-label").fill("scratch")
+                    page.locator("#edit-reason").fill("Reviewed defect")
+                    page.get_by_role("button", name="Save change", exact=True).click()
+                    playwright_api.expect(page.locator("#test-summary")).to_have_text(
+                        "0 healthy · 1 defective"
+                    )
+                    page.locator("#change-history summary").click()
+                    page.get_by_role("button", name="Undo change", exact=True).click()
+                    playwright_api.expect(page.locator("#test-summary")).to_have_text(
+                        "1 healthy · 0 defective"
+                    )
+                    page.get_by_role(
+                        "button", name="Review train/good/a.png", exact=True
+                    ).click()
+                    page.get_by_role(
+                        "button", name="Exclude sample", exact=True
+                    ).click()
+                    page.locator("#edit-reason").fill("Blurred capture")
+                    page.get_by_role("button", name="Save change", exact=True).click()
+                    playwright_api.expect(page.locator("#train-count")).to_have_text(
+                        "1"
+                    )
+                    page.get_by_role(
+                        "button", name="Restore sample", exact=True
+                    ).click()
+                    playwright_api.expect(page.locator("#train-count")).to_have_text(
+                        "2"
+                    )
                     assert not errors
                     page.set_viewport_size({"width": 390, "height": 844})
                     playwright_api.expect(page.locator(".new-dataset")).to_be_visible()

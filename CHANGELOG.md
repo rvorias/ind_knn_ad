@@ -5,6 +5,13 @@ All notable changes to this project are documented here. The project follows
 
 ## [Unreleased]
 
+### Added
+
+- In-app sample relabeling, train/inspection reassignment, and exclusion with
+  required reasons, mask preservation, persistent history, and undo/restore.
+- Shared curation functions, HTTP endpoints, and `indad-data revise/changes/undo`
+  commands with stale-inventory and overwrite protection.
+
 ### Fixed
 
 - ONNX export now uses the supported `torch.onnx.export` API on current PyTorch,

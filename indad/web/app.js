@@ -208,6 +208,15 @@ function renderDetail() {
     };
     body.append(inspect);
   }
+  const edit = el("button", "button secondary", "Correct label or collection");
+  edit.onclick = () => openSampleEdit(sample, false);
+  const exclude = el(
+    "button",
+    "button secondary exclude-button",
+    "Exclude sample",
+  );
+  exclude.onclick = () => openSampleEdit(sample, true);
+  body.append(edit, exclude);
   const path = el("div", "path", sample.path);
   body.append(path);
   panel.append(image, body);
@@ -344,6 +353,7 @@ function renderReport() {
   renderGallery();
   renderChecks();
   renderRun();
+  if ($("#change-history").open) loadHistory();
 }
 async function loadDataset(name) {
   const token = ++state.loading;
@@ -695,6 +705,134 @@ $("#predict").onclick = async () => {
   } finally {
     await pollRun();
   }
+};
+function openSampleEdit(sample, exclude) {
+  const form = $("#edit-form");
+  form.dataset.path = sample.path;
+  form.dataset.dataset = state.dataset;
+  form.dataset.fingerprint = state.report.fingerprint;
+  $("#edit-path").textContent = sample.path;
+  $("#edit-purpose").value = exclude
+    ? "exclude"
+    : sample.split === "train"
+      ? "train"
+      : sample.label === "good"
+        ? "test-good"
+        : "test-defect";
+  $("#edit-label").value =
+    sample.label && sample.label !== "good" ? sample.label : "scratch";
+  $("#edit-reason").value = "";
+  form.querySelector(".form-error").textContent = "";
+  updateEditHelp();
+  $("#edit-dialog").showModal();
+}
+function updateEditHelp() {
+  const purpose = $("#edit-purpose").value;
+  $("#edit-defect-field").hidden = purpose !== "test-defect";
+  $("#edit-label").required = purpose === "test-defect";
+  $("#edit-help").textContent =
+    purpose === "exclude"
+      ? "This image and its mask will leave the active dataset. Original files are preserved; restore them from Change history."
+      : "The image keeps its original bytes. Masks follow the defect label; unused masks are preserved for undo.";
+}
+$("#edit-purpose").onchange = updateEditHelp;
+$("#edit-form").onsubmit = async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("[type=submit]");
+  button.disabled = true;
+  try {
+    const purpose = $("#edit-purpose").value;
+    const result = await post(
+      `/api/datasets/${encodeURIComponent(form.dataset.dataset)}/samples/revise`,
+      {
+        path: form.dataset.path,
+        fingerprint: form.dataset.fingerprint,
+        reason: $("#edit-reason").value,
+        exclude: purpose === "exclude",
+        split: purpose === "train" ? "train" : "test",
+        label: purpose === "test-defect" ? $("#edit-label").value : "good",
+      },
+    );
+    $("#edit-dialog").close();
+    if (form.dataset.dataset === state.dataset) {
+      if (result.action === "relabel") state.selected = result.files[0].to;
+      await refreshReport();
+    }
+    notice(
+      result.action === "exclude"
+        ? "Sample excluded. Restore it from Change history."
+        : "Sample updated. The image and mask changes are recorded in Change history.",
+    );
+  } catch (error) {
+    form.querySelector(".form-error").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+async function loadHistory() {
+  const name = state.dataset;
+  if (!name) return;
+  try {
+    const result = await api(
+      `/api/datasets/${encodeURIComponent(name)}/changes`,
+    );
+    if (name !== state.dataset) return;
+    const list = $("#changes-list");
+    list.replaceChildren();
+    const changes = result.changes.filter((change) => change.action !== "undo");
+    if (!changes.length)
+      list.append(
+        el(
+          "p",
+          "muted",
+          "No sample edits yet. Changes and their reasons will appear here.",
+        ),
+      );
+    for (const change of changes) {
+      const row = el("article", "change-row");
+      const text = el("div");
+      text.append(
+        el(
+          "strong",
+          "",
+          `${change.action === "exclude" ? "Excluded" : "Relabeled"}: ${change.path}`,
+        ),
+        el("p", "", change.reason),
+        el("small", "", new Date(change.created_at).toLocaleString()),
+      );
+      row.append(text);
+      if (change.undone) row.append(el("span", "badge good", "Undone"));
+      else {
+        const undo = el(
+          "button",
+          "button secondary",
+          change.action === "exclude" ? "Restore sample" : "Undo change",
+        );
+        undo.onclick = async () => {
+          undo.disabled = true;
+          try {
+            await post(
+              `/api/datasets/${encodeURIComponent(name)}/changes/${change.id}/undo`,
+              { fingerprint: state.report.fingerprint },
+            );
+            await refreshReport();
+            notice("Change undone. Original sample files restored.");
+          } catch (error) {
+            notice(error.message, true);
+            undo.disabled = false;
+          }
+        };
+        row.append(undo);
+      }
+      list.append(row);
+    }
+  } catch (error) {
+    notice(error.message, true);
+  }
+}
+$("#change-history").ontoggle = () => {
+  if ($("#change-history").open) loadHistory();
 };
 async function boot() {
   try {

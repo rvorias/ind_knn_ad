@@ -199,3 +199,55 @@ def test_empty_dataset_cannot_train(client):
         == 422
     )
     assert client.get("/api/runs/missing").status_code == 404
+
+
+def test_operator_can_relabel_exclude_and_restore_a_sample(client):
+    def fingerprint():
+        return client.get("/api/datasets/parts/report").json()["fingerprint"]
+
+    before = fingerprint()
+    response = client.post(
+        "/api/datasets/parts/samples/revise",
+        json={
+            "path": "test/good/c.png",
+            "fingerprint": before,
+            "reason": "Reviewed defect",
+            "split": "test",
+            "label": "scratch",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["files"][0]["to"] == "test/scratch/c.png"
+    stale = client.post(
+        "/api/datasets/parts/samples/revise",
+        json={
+            "path": "test/scratch/c.png",
+            "fingerprint": before,
+            "reason": "Duplicate",
+            "exclude": True,
+        },
+    )
+    assert stale.status_code == 409
+    response = client.post(
+        "/api/datasets/parts/samples/revise",
+        json={
+            "path": "test/scratch/c.png",
+            "fingerprint": fingerprint(),
+            "reason": "Duplicate",
+            "exclude": True,
+        },
+    )
+    assert response.status_code == 200
+    change = response.json()
+    assert len(client.get("/api/datasets/parts/changes").json()["changes"]) == 2
+    response = client.post(
+        f"/api/datasets/parts/changes/{change['id']}/undo",
+        json={"fingerprint": fingerprint()},
+    )
+    assert response.status_code == 200
+    assert (
+        client.get(
+            "/api/datasets/parts/image", params={"path": "test/scratch/c.png"}
+        ).status_code
+        == 200
+    )

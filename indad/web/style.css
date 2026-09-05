@@ -1321,3 +1321,65 @@ dialog small {
     border-radius: 5px;
   }
 }
+
+textarea {
+  font: inherit;
+  padding: 10px 12px;
+  color: var(--ink);
+  border: 1px solid #dbe1e6;
+  border-radius: 6px;
+  resize: vertical;
+}
+textarea:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 4px;
+}
+.change-history {
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.change-history > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #657784;
+}
+#changes-list {
+  margin-top: 18px;
+}
+.change-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.change-row strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.change-row p {
+  font-size: 11px;
+  margin: 7px 0;
+}
+.change-row small {
+  font-size: 10px;
+}
+.exclude-button {
+  color: #a15c40;
+}
+#edit-path {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+@media (max-width: 550px) {
+  .change-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

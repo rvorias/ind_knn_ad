@@ -214,6 +214,10 @@
                   </div>
                 </aside>
               </div>
+              <details id="change-history" class="change-history">
+                <summary>Change history · restore excluded samples</summary>
+                <div id="changes-list"></div>
+              </details>
             </section>
             <section
               id="checks-panel"
@@ -397,6 +401,58 @@
           ><button id="save-import" class="button primary" type="submit">
             Save images
           </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="edit-dialog">
+      <form id="edit-form">
+        <div class="dialog-heading">
+          <div>
+            <div class="eyebrow">REVIEW SAMPLE</div>
+            <h2>Update this sample</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <p id="edit-path"></p>
+        <label
+          >Use this sample for<select id="edit-purpose">
+            <option value="train">Healthy training</option>
+            <option value="test-good">Healthy inspection</option>
+            <option value="test-defect">Defective inspection</option>
+            <option value="exclude">Exclude from the dataset</option>
+          </select></label
+        >
+        <label id="edit-defect-field" hidden
+          >Defect type<input
+            id="edit-label"
+            pattern="[A-Za-z0-9][A-Za-z0-9_-]*"
+            value="scratch"
+        /></label>
+        <p id="edit-help">
+          The image keeps its original bytes. Masks follow the defect label;
+          unused masks are preserved for undo.
+        </p>
+        <label
+          >Reason for this change<textarea
+            id="edit-reason"
+            required
+            maxlength="500"
+            rows="3"
+            placeholder="For example: incorrect label, blurred capture, or duplicate frame"
+          ></textarea>
+        </label>
+        <p class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="button secondary" data-close>
+            Cancel</button
+          ><button type="submit" class="button primary">Save change</button>
         </div>
       </form>
     </dialog>

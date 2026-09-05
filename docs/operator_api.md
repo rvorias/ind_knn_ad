@@ -25,9 +25,12 @@ startup. Training and prediction use the server's compute device.
 3. Browse samples, search filenames, filter by collection, and review the selected
    image and its mask. Arrow buttons move between samples. The gallery loads 24
    samples at a time and uses thumbnails.
-4. Open **Quality checks** to see operation-specific readiness and actionable
+4. Use **Correct label or collection** or **Exclude sample** in the sample panel,
+   record the reason, and save. Review or undo edits in **Change history**. Excluded
+   images and unused masks are preserved in the dataset's `.indad` folder.
+5. Open **Quality checks** to see operation-specific readiness and actionable
    findings. Clicking a finding's sample path opens the relevant image.
-5. Open **Inspection baseline**, choose a core model, and train. The task runs in the
+6. Open **Inspection baseline**, choose a core model, and train. The task runs in the
    background; you can continue reviewing samples. Select an inspection image to
    see the model input, anomaly map, overlay, and numerical score.
 
@@ -54,6 +57,9 @@ The API documentation is at `/docs`; its machine-readable schema is at
 | GET | `/api/datasets/{name}/report` | Inventory, checksums, findings and readiness |
 | POST | `/api/datasets/{name}/import` | Multipart `files`, `split`, `label` |
 | GET | `/api/datasets/{name}/image?path=...&thumbnail=true` | PNG preview of a dataset image or mask |
+| GET | `/api/datasets/{name}/changes` | Edit and undo history, newest first |
+| POST | `/api/datasets/{name}/samples/revise` | Relabel, move, or exclude a sample |
+| POST | `/api/datasets/{name}/changes/{id}/undo` | Reverse a recorded edit |
 | POST | `/api/runs` | Start background training |
 | GET | `/api/runs/current` | Current run, or null before training |
 | GET | `/api/runs/{id}` | Run status and dataset fingerprint |
@@ -90,6 +96,34 @@ File and validation errors return a non-2xx response with a JSON `detail`. Unrea
 or stale baselines and busy inspection tasks return HTTP 409; oversized imports
 return 413. Invalid typed request fields return 422. Inspect the report's readiness
 flags before requesting a run.
+
+## Sample curation requests
+
+`POST /api/datasets/{name}/samples/revise` accepts:
+
+```json
+{
+  "path": "test/scratch/001.png",
+  "fingerprint": "fingerprint from the latest report",
+  "reason": "Reviewed defect type",
+  "split": "test",
+  "label": "dent",
+  "exclude": false
+}
+```
+
+Set `exclude` to `true` to archive the sample and its mask. For exclusion, `split`
+and `label` are ignored. Every edit requires a nonempty reason of up to 500
+characters. The result includes a change ID, timestamp, reason and before/after
+file paths with checksums.
+
+Undo takes `{"fingerprint":"latest report fingerprint"}`. Restore is refused if
+archived files changed or their original paths now contain other captures. Undo
+successive edits to the same image in reverse order. Stale fingerprints return
+HTTP 409. No operation overwrites existing images or masks.
+
+The history endpoint marks previously undone edits with `undone: true`. The
+archive/history directory must accompany dataset backups to preserve undo.
 
 ## Development
 

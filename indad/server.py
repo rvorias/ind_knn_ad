@@ -17,6 +17,7 @@ from PIL import Image
 from pydantic import BaseModel
 
 from indad._version import __version__
+from indad.curation import DatasetChanged, list_changes, revise_sample, undo_change
 from indad.workspace import (
     IMAGE_EXTENSIONS,
     _name,
@@ -37,6 +38,19 @@ class RunRequest(BaseModel):
     dataset: str
     method: Literal["patchcore", "padim", "spade"] = "patchcore"
     device: Literal["cpu", "cuda"] = "cpu"
+
+
+class SampleEditRequest(BaseModel):
+    path: str
+    fingerprint: str
+    reason: str
+    split: Literal["train", "test"] | None = None
+    label: str = "good"
+    exclude: bool = False
+
+
+class UndoRequest(BaseModel):
+    fingerprint: str
 
 
 class PredictionRequest(BaseModel):
@@ -217,6 +231,10 @@ def create_app(dataset_root: str | Path = "datasets") -> FastAPI:
     app = FastAPI(title="Indad Operator API", version=__version__, lifespan=lifespan)
     app.state.runs = runs
 
+    @app.exception_handler(DatasetChanged)
+    async def stale_dataset(request, exc):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
     @app.exception_handler(ValueError)
     async def invalid_value(request, exc):
         return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -289,6 +307,31 @@ def create_app(dataset_root: str | Path = "datasets") -> FastAPI:
         with dataset_lock:
             paths = import_images(dataset_path(name), batch, split, label)
         return {"imported": paths}
+
+    @app.get("/api/datasets/{name}/changes")
+    def changes(name: str):
+        with dataset_lock:
+            return {"changes": list_changes(dataset_path(name))}
+
+    @app.post("/api/datasets/{name}/samples/revise")
+    def edit_sample(name: str, body: SampleEditRequest):
+        with dataset_lock:
+            return revise_sample(
+                dataset_path(name),
+                body.path,
+                fingerprint=body.fingerprint,
+                reason=body.reason,
+                split=body.split,
+                label=body.label,
+                exclude=body.exclude,
+            )
+
+    @app.post("/api/datasets/{name}/changes/{change_id}/undo")
+    def undo(name: str, change_id: str, body: UndoRequest):
+        with dataset_lock:
+            return undo_change(
+                dataset_path(name), change_id, fingerprint=body.fingerprint
+            )
 
     @app.get("/api/datasets/{name}/image")
     def image(name: str, path: str, thumbnail: bool = False):

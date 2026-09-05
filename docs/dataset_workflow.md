@@ -58,6 +58,29 @@ through `indad METHOD --dataset NAME` for datasets with pixel masks under `./dat
 The browser UI replaces the previous Streamlit demo. Its standard HTTP API also
 supports agent clients; see the [API guide](operator_api.md).
 
+## Correct labels and exclude bad captures
+
+Select an image in **Samples**, then choose **Correct label or collection** or
+**Exclude sample**. Record a reason before saving. Defective samples can move
+between defect types; healthy samples can move between training and inspection.
+Only healthy images may be placed in training.
+
+Masks move with their defective images. When an image becomes healthy, its old
+mask is archived. Excluding a sample archives both its image and mask outside the
+active dataset, preserving their original bytes. **Change history** lists edits,
+reasons and timestamps, with **Undo change** and **Restore sample** actions.
+
+Edits and undo reject stale dataset fingerprints, changed file contents, and
+occupied destination filenames. Undo multiple edits to the same image in reverse
+order. Images sharing a mask must get unique stems before editing. A failed file
+operation rolls back completed moves when possible; keep normal dataset backups
+for disk failure or interrupted processes.
+
+Archives and history live under `<dataset>/.indad/`. Keep that folder with the
+collection to retain undo history. The manifest describes active samples;
+`indad-data changes` exposes the edit history separately. Data changes invalidate
+baselines until their active inventory matches again.
+
 ## Automation uses the same dataset operations
 
 ```shell
@@ -67,6 +90,17 @@ indad-data import datasets/line_1_bottles captures/check_good/*.png --split test
 indad-data import datasets/line_1_bottles captures/scratched/*.png --split test --label scratch
 indad-data import datasets/line_1_bottles captures/masks/*_mask.png --split ground_truth --label scratch
 indad-data inspect datasets/line_1_bottles --require inspection > manifest.json
+```
+
+Curation commands take the latest report's fingerprint to prevent stale edits:
+
+```shell
+indad-data revise datasets/line_1_bottles test/scratch/001.png \
+  --split test --label dent --reason "Reviewed defect type" --fingerprint REPORT_FINGERPRINT
+indad-data revise datasets/line_1_bottles train/good/002.png \
+  --exclude --reason "Blurred capture" --fingerprint REPORT_FINGERPRINT
+indad-data changes datasets/line_1_bottles
+indad-data undo datasets/line_1_bottles CHANGE_ID --fingerprint REPORT_FINGERPRINT
 ```
 
 Without installing the console entry point, use `python -m indad.dataset_cli`.
@@ -108,8 +142,7 @@ parts/
 
 ## Where this project should invest next
 
-Prioritize correcting labels and excluding bad captures from the UI, capture-group
-splits, and versioned dataset snapshots with provenance. Then add comparable saved
+Next, prioritize capture-group splits and versioned dataset snapshots with provenance. Then add comparable saved
 inspection runs and threshold review with false-positive and missed-defect examples.
 Keep synthetic data explicitly traceable if generation is introduced. Expand the
 model set only when a demonstrated operator workflow needs it.
