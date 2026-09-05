@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Indad · Operator console</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%230f766e'/%3E%3Cpath d='M10 12h20v16H10zM20 8v24M7 20h26' stroke='white' fill='none' stroke-width='2'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <script src="/assets/app.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Indad home"
+          ><span class="brand-mark">▧</span
+          ><span>indad<span class="brand-sub">OPERATOR CONSOLE</span></span></a
+        >
+        <div class="workspace-label">
+          <span class="status-dot"></span> LOCAL WORKSPACE
+        </div>
+        <div class="nav-heading">
+          COLLECTIONS
+          <button
+            class="icon-button"
+            data-open="create-dialog"
+            aria-label="Create dataset"
+          >
+            +
+          </button>
+        </div>
+        <nav id="datasets" aria-label="Datasets">
+          <span class="muted">Connecting…</span>
+        </nav>
+        <button class="new-dataset" data-open="create-dialog">
+          ＋ New dataset
+        </button>
+        <div class="sidebar-bottom">
+          <div class="sidebar-note">
+            Good inspections<br />start with good data.
+          </div>
+          <a href="/docs" target="_blank" rel="noopener"
+            >API reference <span>↗</span></a
+          >
+          <div class="server-status">
+            <span class="status-dot" id="connection-dot"></span
+            ><span id="connection">Connecting</span><span id="version"></span>
+          </div>
+        </div>
+      </aside>
+      <div class="workspace">
+        <header class="topbar">
+          <div>
+            Workspace <span class="slash">/</span> Datasets
+            <span class="slash">/</span> <strong id="breadcrumb">—</strong>
+          </div>
+          <span class="topbar-tag">DATASET OPERATIONS</span>
+        </header>
+        <main>
+          <section class="page-heading">
+            <div>
+              <div class="eyebrow">COLLECTION WORKSPACE</div>
+              <h1 id="dataset-title">Your inspection workspace</h1>
+              <p id="dataset-subtitle">
+                Collect. Review. Inspect. One continuous workflow.
+              </p>
+            </div>
+            <div class="heading-actions">
+              <button
+                id="refresh"
+                class="button secondary"
+                title="Rescan files on disk"
+              >
+                ↻ Refresh</button
+              ><button
+                id="open-import"
+                class="button primary"
+                data-open="import-dialog"
+                disabled
+              >
+                ＋ Import images
+              </button>
+            </div>
+          </section>
+          <div id="notice" role="status" aria-live="polite" hidden></div>
+          <section id="welcome" class="welcome" hidden>
+            <div class="welcome-symbol">▧</div>
+            <div class="eyebrow">READY WHEN YOU ARE</div>
+            <h2>Start with a collection of parts.</h2>
+            <p>
+              Create a dataset, add healthy and defective examples,<br />then
+              see what your inspection baseline finds.
+            </p>
+            <button class="button primary" data-open="create-dialog">
+              Create your first dataset
+            </button>
+            <div class="welcome-steps">
+              <span>01 &nbsp; Collect images</span
+              ><span>02 &nbsp; Review quality</span
+              ><span>03 &nbsp; Inspect parts</span>
+            </div>
+          </section>
+          <div id="dataset-content" hidden>
+            <section class="stats" aria-label="Dataset summary">
+              <article>
+                <span>TRAINING IMAGES</span><strong id="train-count">0</strong
+                ><small
+                  ><i class="mini-dot teal"></i> Healthy reference parts</small
+                >
+              </article>
+              <article>
+                <span>INSPECTION IMAGES</span><strong id="test-count">0</strong
+                ><small id="test-summary">0 healthy · 0 defective</small>
+              </article>
+              <article>
+                <span>ANNOTATION COVERAGE</span
+                ><strong id="mask-count">—</strong
+                ><small id="mask-summary">No defective images yet</small>
+              </article>
+              <article class="readiness-card">
+                <span>INSPECTION READINESS</span
+                ><strong id="ready-label">Needs data</strong
+                ><small id="ready-summary">Add images to get started</small>
+              </article>
+            </section>
+            <div
+              class="section-nav"
+              role="tablist"
+              aria-label="Dataset workspace"
+            >
+              <button
+                id="tab-samples"
+                role="tab"
+                aria-selected="true"
+                aria-controls="samples-panel"
+                data-tab="samples"
+              >
+                Samples <span id="sample-count">0</span></button
+              ><button
+                id="tab-checks"
+                role="tab"
+                aria-selected="false"
+                aria-controls="checks-panel"
+                data-tab="checks"
+              >
+                Quality checks <span id="issue-count">0</span></button
+              ><button
+                id="tab-inspection"
+                role="tab"
+                aria-selected="false"
+                aria-controls="inspection-panel"
+                data-tab="inspection"
+              >
+                Inspection baseline</button
+              ><button id="export" class="export-button">
+                ↓ Export manifest
+              </button>
+            </div>
+            <section
+              id="samples-panel"
+              role="tabpanel"
+              aria-labelledby="tab-samples"
+            >
+              <div class="sample-layout">
+                <div class="sample-browser">
+                  <div class="browser-toolbar">
+                    <label class="search"
+                      ><span>⌕</span
+                      ><input
+                        id="search"
+                        type="search"
+                        placeholder="Search filenames…"
+                        aria-label="Search filenames" /></label
+                    ><select
+                      id="collection-filter"
+                      aria-label="Filter collection"
+                    >
+                      <option value="all">All samples</option></select
+                    ><span id="filtered-count" class="muted"></span>
+                  </div>
+                  <div id="gallery" class="gallery"></div>
+                  <button
+                    id="load-more"
+                    class="button secondary load-more"
+                    hidden
+                  >
+                    Load more samples
+                  </button>
+                </div>
+                <aside class="detail-panel" aria-label="Sample details">
+                  <div class="detail-heading">
+                    <span>SAMPLE DETAILS</span>
+                    <div>
+                      <button
+                        id="previous"
+                        class="icon-button"
+                        aria-label="Previous sample"
+                      >
+                        ←</button
+                      ><button
+                        id="next"
+                        class="icon-button"
+                        aria-label="Next sample"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                  <div id="sample-detail" class="detail-empty">
+                    Select an image to review its details.
+                  </div>
+                </aside>
+              </div>
+            </section>
+            <section
+              id="checks-panel"
+              role="tabpanel"
+              aria-labelledby="tab-checks"
+              hidden
+            >
+              <div class="panel-heading">
+                <div>
+                  <h2>Know what’s ready. See what needs attention.</h2>
+                  <p>Checks look at the files and labels in this collection.</p>
+                </div>
+                <span class="badge neutral">SCAN ON DEMAND</span>
+              </div>
+              <div id="readiness-list" class="readiness-list"></div>
+              <div id="findings"></div>
+            </section>
+            <section
+              id="inspection-panel"
+              role="tabpanel"
+              aria-labelledby="tab-inspection"
+              hidden
+            >
+              <div class="inspection-layout">
+                <aside class="baseline-config">
+                  <div class="eyebrow">REFERENCE BASELINE</div>
+                  <h2>Learn healthy.<br />Find unusual.</h2>
+                  <p>
+                    Train on your healthy reference parts, then inspect
+                    individual samples.
+                  </p>
+                  <label
+                    >Model<select id="method">
+                      <option value="patchcore">PatchCore</option>
+                      <option value="padim">PaDiM</option>
+                      <option value="spade">SPADE</option>
+                    </select></label
+                  >
+                  <details>
+                    <summary>Advanced settings</summary>
+                    <label
+                      >Compute device<select id="device">
+                        <option value="cpu">CPU</option>
+                        <option value="cuda">CUDA GPU</option>
+                      </select></label
+                    >
+                    <p>
+                      ResNet18 · 224 × 224 center crop · seed 0. The first run
+                      may download pretrained weights.
+                    </p>
+                  </details>
+                  <button id="train" class="button primary">
+                    Train baseline
+                  </button>
+                  <div id="run-status" role="status" aria-live="polite">
+                    Prepare a dataset to begin.
+                  </div>
+                  <p class="fine-print">
+                    Scores indicate unusual appearance; they are not calibrated
+                    pass/fail decisions.
+                  </p>
+                </aside>
+                <div class="inspection-results">
+                  <div class="inspection-toolbar">
+                    <label
+                      >Inspection sample<select
+                        id="inspection-sample"
+                      ></select></label
+                    ><button id="predict" class="button primary" disabled>
+                      Inspect image →
+                    </button>
+                  </div>
+                  <div id="prediction">
+                    <div class="empty-state">
+                      <span class="large-symbol">◎</span>
+                      <h3>A second look at every part.</h3>
+                      <p>
+                        Train a baseline, then select an inspection image.<br />Your
+                        image, anomaly map and overlay will appear here.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <footer>
+              <span id="inventory-meta">Inventory ready</span
+              ><span
+                >Original captures preserved
+                <span class="footer-dot">·</span> Local storage</span
+              >
+            </footer>
+          </div>
+        </main>
+      </div>
+    </div>
+    <dialog id="create-dialog">
+      <form id="create-form">
+        <div class="dialog-heading">
+          <div>
+            <div class="eyebrow">NEW COLLECTION</div>
+            <h2>Create a dataset</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <p>
+          Give this collection a name that identifies the part or production
+          line.
+        </p>
+        <label
+          >Dataset name<input
+            name="name"
+            required
+            pattern="[A-Za-z0-9][A-Za-z0-9_-]*"
+            placeholder="line_1_bottles"
+            autocomplete="off" /></label
+        ><small>Letters, numbers, hyphens and underscores.</small>
+        <p class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="button secondary" data-close>
+            Cancel</button
+          ><button class="button primary" type="submit">Create dataset</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="import-dialog">
+      <form id="import-form">
+        <div class="dialog-heading">
+          <div>
+            <div class="eyebrow">ADD TO COLLECTION</div>
+            <h2>Import images</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            data-close
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <label
+          >Use these images for<select id="import-purpose">
+            <option value="train">Healthy training</option>
+            <option value="test-good">Healthy inspection</option>
+            <option value="test-defect">Defective inspection</option>
+            <option value="ground_truth">Defect masks</option>
+          </select></label
+        ><label id="defect-field" hidden
+          >Defect type<input
+            id="defect-label"
+            pattern="[A-Za-z0-9][A-Za-z0-9_-]*"
+            value="scratch"
+        /></label>
+        <p id="import-help">
+          Use healthy parts only. Keep separate captures for inspection.
+        </p>
+        <label class="upload-zone" id="drop-zone"
+          ><span class="upload-symbol">↥</span
+          ><strong>Choose images or drop them here</strong
+          ><span>PNG, JPEG, BMP, TIFF or WebP · up to 100 MB per import</span
+          ><input
+            id="import-files"
+            type="file"
+            accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff,.webp"
+            multiple
+            required
+        /></label>
+        <div id="file-summary" class="muted">No files selected</div>
+        <p class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="button secondary" data-close>
+            Cancel</button
+          ><button id="save-import" class="button primary" type="submit">
+            Save images
+          </button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

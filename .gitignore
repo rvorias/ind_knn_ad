@@ -4,3 +4,12 @@ notebooks/
 *.pt
 *.onnx
 .vscode/
+.venv/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/

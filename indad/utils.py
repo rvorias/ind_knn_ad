@@ -1,17 +1,18 @@
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import torch
 import yaml
-from loguru import logger
-from onnxruntime import InferenceSession
 from PIL import ImageFilter
 from sklearn import random_projection
-from torch import nn, tensor
+from torch import Tensor, nn
 from torch.nn import functional as F
 from torchvision import transforms
 from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
 
 TQDM_PARAMS = {
     "file": sys.stdout,
@@ -20,7 +21,7 @@ TQDM_PARAMS = {
 
 
 def get_tqdm_params():
-    return TQDM_PARAMS
+    return TQDM_PARAMS.copy()
 
 
 class GaussianBlur:
@@ -28,10 +29,12 @@ class GaussianBlur:
         self.radius = radius
         self.unload = transforms.ToPILImage()
         self.load = transforms.ToTensor()
-        self.blur_kernel = ImageFilter.GaussianBlur(radius=4)
+        self.blur_kernel = ImageFilter.GaussianBlur(radius=radius)
 
     def __call__(self, img):
         map_max = img.max()
+        if map_max == 0:
+            return torch.zeros_like(img[0])
         final_map = (
             self.load(self.unload(img[0] / map_max).filter(self.blur_kernel)) * map_max
         )
@@ -62,12 +65,13 @@ class NativeGaussianBlur(nn.Module):
 
 
 def get_coreset_idx_randomp(
-    z_lib: tensor,
+    z_lib: Tensor,
     n: int = 1000,
     eps: float = 0.90,
     float16: bool = True,
     force_cpu: bool = False,
-) -> tensor:
+    random_state: int = 0,
+) -> Tensor:
     """Returns n coreset idx for given z_lib.
 
     Performance on AMD3700, 32GB RAM, RTX3080 (10GB):
@@ -76,53 +80,57 @@ def get_coreset_idx_randomp(
     Args:
         z_lib:      (n, d) tensor of patches.
         n:          Number of patches to select.
-        eps:        Agression of the sparse random projection.
+        eps:        Aggressiveness of the sparse random projection.
         float16:    Cast all to float16, saves memory and is a bit faster (on GPU).
-        force_cpu:  Force cpu, useful in case of GPU OOM.
+        force_cpu:  Force CPU, useful in case of GPU OOM.
+        random_state: Seed used by the sparse random projection.
 
     Returns:
         coreset indices
     """
 
+    if z_lib.ndim != 2 or z_lib.shape[0] == 0:
+        raise ValueError("z_lib must be a non-empty two-dimensional tensor")
+    if not 1 <= n <= z_lib.shape[0]:
+        raise ValueError(f"n must be between 1 and {z_lib.shape[0]}")
+
     print(f"   Fitting random projections. Start dim = {z_lib.shape}.")
     try:
-        transformer = random_projection.SparseRandomProjection(eps=eps)
-        z_lib = torch.tensor(transformer.fit_transform(z_lib))
+        transformer = random_projection.SparseRandomProjection(
+            eps=eps, random_state=random_state
+        )
+        projected = transformer.fit_transform(z_lib.detach().cpu().numpy())
+        z_lib = torch.as_tensor(projected)
         print(f"   DONE.                 Transformed dim = {z_lib.shape}.")
-    except ValueError:
-        print("   Error: could not project vectors. Please increase `eps`.")
+    except ValueError as exc:
+        raise ValueError(
+            "Could not project feature vectors; increase coreset_eps"
+        ) from exc
+
+    compute_device = (
+        torch.device("cuda")
+        if torch.cuda.is_available() and not force_cpu
+        else torch.device("cpu")
+    )
+    compute_dtype = (
+        torch.float16 if float16 and compute_device.type == "cuda" else torch.float32
+    )
+    z_lib = z_lib.to(device=compute_device, dtype=compute_dtype)
 
     select_idx = 0
+    coreset_idx = [select_idx]
     last_item = z_lib[select_idx : select_idx + 1]
-    coreset_idx = [torch.tensor(select_idx)]
-    min_distances = torch.linalg.norm(z_lib - last_item, dim=1, keepdims=True)
-    # The line below is not faster than linalg.norm, although i'm keeping it in for
-    # future reference.
-    # min_distances = torch.sum(torch.pow(z_lib-last_item, 2), dim=1, keepdims=True)
-
-    if float16:
-        last_item = last_item.half()
-        z_lib = z_lib.half()
-        min_distances = min_distances.half()
-    if torch.cuda.is_available() and not force_cpu:
-        last_item = last_item.to("cuda")
-        z_lib = z_lib.to("cuda")
-        min_distances = min_distances.to("cuda")
+    min_distances = torch.linalg.vector_norm(z_lib - last_item, dim=1)
 
     for _ in tqdm(range(n - 1), **TQDM_PARAMS):
-        distances = torch.linalg.norm(
-            z_lib - last_item, dim=1, keepdims=True
-        )  # broadcasting step
-        # distances = torch.sum(torch.pow(z_lib-last_item, 2), dim=1, keepdims=True) # broadcasting step
-        min_distances = torch.minimum(distances, min_distances)  # iterative step
-        select_idx = torch.argmax(min_distances)  # selection step
-
-        # bookkeeping
+        distances = torch.linalg.vector_norm(z_lib - last_item, dim=1)
+        min_distances = torch.minimum(distances, min_distances)
+        select_idx = int(torch.argmax(min_distances))
         last_item = z_lib[select_idx : select_idx + 1]
         min_distances[select_idx] = 0
-        coreset_idx.append(select_idx.to("cpu"))
+        coreset_idx.append(select_idx)
 
-    return torch.stack(coreset_idx)
+    return torch.tensor(coreset_idx, dtype=torch.long)
 
 
 def print_and_export_results(results: dict, method: str):
@@ -136,15 +144,17 @@ def print_and_export_results(results: dict, method: str):
     print("   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n")
 
     # write
-    timestamp = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     name = f"{method}_{timestamp}"
 
-    results_yaml_path = f"./results/{name}.yml"
-    scoreboard_path = f"./results/{name}.txt"
+    results_dir = Path("./results")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    results_yaml_path = results_dir / f"{name}.yml"
+    scoreboard_path = results_dir / f"{name}.txt"
 
-    with open(results_yaml_path, "w") as outfile:
+    with results_yaml_path.open("w", encoding="utf-8") as outfile:
         yaml.safe_dump(results, outfile, default_flow_style=False)
-    with open(scoreboard_path, "w") as outfile:
+    with scoreboard_path.open("w", encoding="utf-8") as outfile:
         outfile.write(serialize_results(results["per_class_results"]))
 
     print(f"   Results written to {results_yaml_path}")
@@ -162,11 +172,14 @@ def serialize_results(results: dict) -> str:
 
 
 def run_onnx(model_path: str | Path, sample: torch.Tensor):
+    from onnxruntime import InferenceSession
+
     logger.info(f"Running ONNX model from {model_path}")
 
-    sess = InferenceSession(model_path)
-    sample = sample.numpy()
-    z_score, s_map = sess.run(None, {"l_sample_": sample})
+    sess = InferenceSession(str(model_path))
+    sample_array = sample.detach().cpu().numpy()
+    input_name = sess.get_inputs()[0].name
+    z_score, s_map = sess.run(None, {input_name: sample_array})
     logger.info(
         f"Prediction result - z_score: {z_score.item()}, s_map shape: {s_map.shape}"
     )
@@ -177,7 +190,7 @@ def run_onnx(model_path: str | Path, sample: torch.Tensor):
 def run_torchscript(model_path: str | Path, sample: torch.Tensor):
     logger.info(f"Running torchscript model from {model_path}")
 
-    loaded_predictor = torch.jit.load(model_path)
+    loaded_predictor = torch.jit.load(str(model_path), map_location="cpu")
     z_score, s_map = loaded_predictor(sample)
     logger.info(
         f"Prediction result - z_score: {z_score.item()}, s_map shape: {s_map.shape}"

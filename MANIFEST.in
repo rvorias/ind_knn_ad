@@ -1,0 +1,2 @@
+include CHANGELOG.md LICENSE README.md
+recursive-include docs *.md *.png

@@ -1,17 +1,7 @@
-# Ignore everything in this directory
-bottle/
-cable/
-capsule/
-carpet/
-grid/
-hazelnut/
-leather/
-metal_nut/
-pill/
-screw/
-tile/
-toothbrush/
-transistor/
-wood/
-zipper/
-# Somehow !hazelnut_reduced/ and !transistor_reduced/ did not work
+# Ignore downloaded datasets while retaining the two tiny test fixtures.
+/*
+!/.gitignore
+!/hazelnut_reduced/
+!/hazelnut_reduced/**
+!/transistor_reduced/
+!/transistor_reduced/**
