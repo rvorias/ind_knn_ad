@@ -166,7 +166,7 @@ def serialize_results(results: dict) -> str:
     ans = []
     for k, v in results.items():
         s = k + " " * (n_first_col - len(k))
-        s = s + f"| {v[0]*100:.1f}  | {v[1]*100:.1f}  |"
+        s = s + f"| {v[0] * 100:.1f}  | {v[1] * 100:.1f}  |"
         ans.append(s)
     return "\n".join(ans)
 

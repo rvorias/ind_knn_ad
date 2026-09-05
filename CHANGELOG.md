@@ -5,6 +5,17 @@ All notable changes to this project are documented here. The project follows
 
 ## [Unreleased]
 
+### Fixed
+
+- ONNX export now uses the supported `torch.onnx.export` API on current PyTorch,
+  while retaining the older exporter for PyTorch 2.2–2.4.
+- Pin the formatter version so local and CI formatting checks agree.
+
+### Changed
+
+- Run Chromium browser workflow tests in the Python 3.12 CI job and let both
+  Python quality jobs finish independently when one fails.
+
 ## [0.4.0] - 2026-09-05
 
 This release makes dataset preparation and operator workflows the focus of the

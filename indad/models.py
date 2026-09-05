@@ -1,3 +1,4 @@
+from inspect import signature
 from pathlib import Path
 from typing import Any
 
@@ -268,8 +269,19 @@ class SPADE(KNNExtractor):
 
         onnx_path = export_dir / f"{save_name}.onnx"
         tensor_x = torch.rand((1, 3, self.image_size, self.image_size))
-        onnx_program = torch.onnx.dynamo_export(self, tensor_x)
-        onnx_program.save(str(onnx_path))
+        if "external_data" in signature(torch.onnx.export).parameters:
+            torch.onnx.export(
+                self,
+                (tensor_x,),
+                str(onnx_path),
+                dynamo=True,
+                opset_version=18,
+                external_data=False,
+            )
+        else:
+            # PyTorch 2.2–2.4 predates the torch.export-based ONNX API.
+            onnx_program = torch.onnx.dynamo_export(self, tensor_x)
+            onnx_program.save(str(onnx_path))
         return {"torchscript": torchscript_path, "onnx": onnx_path}
 
 
